@@ -26,9 +26,13 @@
         android:label="i221279"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme._22i127922i0809_Assignment3">
+        android:theme="@style/Theme._22i127922i0809_Assignment2"
 
-        <service
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+
+    <service
             android:name=".MyFirebaseMessagingService"
             android:exported="false">
             <intent-filter>

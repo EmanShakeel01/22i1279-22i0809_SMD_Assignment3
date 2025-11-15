@@ -4,30 +4,17 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.*
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import androidx.lifecycle.lifecycleScope
+import com.FEdev.i221279_i220809.network.RetrofitClient
+import com.FEdev.i221279_i220809.models.SignupRequest
+import kotlinx.coroutines.launch
 
 class signup : AppCompatActivity() {
 
-    private lateinit var auth: FirebaseAuth
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_signup)
-        Log.d("ActivityStack", "signup onCreate")
-
-        auth = FirebaseAuth.getInstance()
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.signup)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
 
         val backBtn = findViewById<ImageView>(R.id.back)
         val createAccBtn = findViewById<Button>(R.id.createacc)
@@ -36,7 +23,7 @@ class signup : AppCompatActivity() {
         val usernameField = findViewById<EditText>(R.id.username)
 
         backBtn.setOnClickListener {
-            startActivity(Intent(this, login2::class.java))
+            finish()
         }
 
         createAccBtn.setOnClickListener {
@@ -49,39 +36,52 @@ class signup : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            auth.createUserWithEmailAndPassword(email, password)
-                .addOnSuccessListener {
-                    val uid = auth.currentUser?.uid
-                    if (uid != null) {
-                        saveUserToRealtimeDb(uid, email, username)
-                        Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show()
-                        startActivity(Intent(this, login2::class.java))
-                        finish()
+            // Disable button to prevent double-click
+            createAccBtn.isEnabled = false
+
+            lifecycleScope.launch {
+                try {
+                    val request = SignupRequest(email, username, password)
+                    val response = RetrofitClient.apiService.signup(request)
+
+                    if (response.isSuccessful) {
+                        val body = response.body()
+                        if (body?.success == true) {
+                            Toast.makeText(
+                                this@signup,
+                                body.message,
+                                Toast.LENGTH_SHORT
+                            ).show()
+
+                            // Navigate to login
+                            startActivity(Intent(this@signup, login2::class.java))
+                            finish()
+                        } else {
+                            Toast.makeText(
+                                this@signup,
+                                body?.message ?: "Signup failed",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            createAccBtn.isEnabled = true
+                        }
+                    } else {
+                        Toast.makeText(
+                            this@signup,
+                            "Server error: ${response.code()}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        createAccBtn.isEnabled = true
                     }
+                } catch (e: Exception) {
+                    Log.e("Signup", "Error: ${e.message}")
+                    Toast.makeText(
+                        this@signup,
+                        "Network error: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    createAccBtn.isEnabled = true
                 }
-                .addOnFailureListener {
-                    Toast.makeText(this, "Signup failed: ${it.message}", Toast.LENGTH_SHORT).show()
-                }
+            }
         }
-    }
-
-    private fun saveUserToRealtimeDb(uid: String, email: String, username: String) {
-        val key = email.replace(".", ",")
-        val userData = mapOf(
-            "uid" to uid,
-            "email" to email,
-            "username" to username
-        )
-
-        FirebaseDatabase.getInstance().reference
-            .child("users")
-            .child(key)
-            .setValue(userData)
-            .addOnSuccessListener {
-                Log.d("Firebase", "✅ User saved to Realtime DB with UID: $uid")
-            }
-            .addOnFailureListener {
-                Log.e("Firebase", "❌ Error saving user: ${it.message}")
-            }
     }
 }

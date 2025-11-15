@@ -4,30 +4,22 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.*
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import androidx.lifecycle.lifecycleScope
+import com.FEdev.i221279_i220809.network.RetrofitClient
+import com.FEdev.i221279_i220809.models.LoginRequest
+import com.FEdev.i221279_i220809.utils.SessionManager
+import kotlinx.coroutines.launch
 
 class login2 : AppCompatActivity() {
 
-    private lateinit var database: DatabaseReference
+    private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_login2)
-        Log.d("ActivityStack", "Login2 onCreate")
 
-        database = FirebaseDatabase.getInstance().getReference("users")
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
+        sessionManager = SessionManager(this)
 
         val signupText = findViewById<TextView>(R.id.signUpLink)
         val loginBtn = findViewById<Button>(R.id.loginButton)
@@ -48,7 +40,12 @@ class login2 : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            loginUser(input, password)
+            // Disable button
+            loginBtn.isEnabled = false
+
+            lifecycleScope.launch {
+                loginUser(input, password, loginBtn)
+            }
         }
 
         backBtn.setOnClickListener {
@@ -56,63 +53,61 @@ class login2 : AppCompatActivity() {
         }
     }
 
-    private fun loginUser(input: String, password: String) {
-        val auth = FirebaseAuth.getInstance()
+    private suspend fun loginUser(identifier: String, password: String, loginBtn: Button) {
+        try {
+            val request = LoginRequest(
+                identifier = identifier,
+                password = password
+            )
 
-        if (android.util.Patterns.EMAIL_ADDRESS.matcher(input).matches()) {
-            // Login via email
-            auth.signInWithEmailAndPassword(input, password)
-                .addOnSuccessListener {
-                    val uid = auth.currentUser?.uid ?: return@addOnSuccessListener
-                    ensureUserExistsInRealtimeDb(uid, input)
-                }
-                .addOnFailureListener {
-                    Toast.makeText(this, "Login failed: ${it.message}", Toast.LENGTH_SHORT).show()
-                }
-        } else {
-            // Login via username
-            database.orderByChild("username").equalTo(input).get().addOnSuccessListener { snapshot ->
-                if (snapshot.exists()) {
-                    val email = snapshot.children.first().child("email").value.toString()
-                    auth.signInWithEmailAndPassword(email, password)
-                        .addOnSuccessListener {
-                            val uid = auth.currentUser?.uid ?: return@addOnSuccessListener
-                            ensureUserExistsInRealtimeDb(uid, email)
-                        }
-                        .addOnFailureListener {
-                            Toast.makeText(this, "Login failed: ${it.message}", Toast.LENGTH_SHORT).show()
-                        }
+            val response = RetrofitClient.apiService.login(request)
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body?.success == true && body.data != null) {
+                    val userData = body.data
+
+                    // Save session
+                    sessionManager.saveSession(
+                        userData.auth_token,
+                        userData.user_id,
+                        userData.email,
+                        userData.username
+                    )
+
+                    Toast.makeText(
+                        this@login2,
+                        body.message,
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    // Navigate to homepage
+                    startActivity(Intent(this@login2, homepage::class.java))
+                    finish()
                 } else {
-                    Toast.makeText(this, "Username not found", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@login2,
+                        body?.message ?: "Login failed",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    loginBtn.isEnabled = true
                 }
-            }
-        }
-    }
-
-    // ✅ Automatically creates or updates user entry in Realtime DB
-    private fun ensureUserExistsInRealtimeDb(uid: String, email: String) {
-        val key = email.replace(".", ",")
-        val userRef = FirebaseDatabase.getInstance().reference.child("users").child(key)
-
-        userRef.get().addOnSuccessListener { snapshot ->
-            if (!snapshot.exists()) {
-                // 🔹 Create new DB entry if missing
-                val userData = mapOf(
-                    "uid" to uid,
-                    "email" to email,
-                    "username" to email.substringBefore("@")
-                )
-                userRef.setValue(userData)
-                Log.d("Firebase", "✅ Created new user node for $email")
             } else {
-                // 🔹 Ensure UID is up-to-date
-                userRef.child("uid").setValue(uid)
-                Log.d("Firebase", "✅ Updated UID for existing user $email")
+                Toast.makeText(
+                    this@login2,
+                    "Server error: ${response.code()}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                loginBtn.isEnabled = true
             }
-
-            Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show()
-            startActivity(Intent(this, homepage::class.java))
-            finish()
+        } catch (e: Exception) {
+            Log.e("Login", "Error: ${e.message}")
+            Toast.makeText(
+                this@login2,
+                "Network error: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
+            loginBtn.isEnabled = true
         }
     }
 }
