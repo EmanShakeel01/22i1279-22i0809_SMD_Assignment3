@@ -48,6 +48,7 @@ data class Story(
     val expires_at: Long
 )
 
+
 data class MyStoriesRequest(
     val auth_token: String
 )
@@ -63,10 +64,17 @@ data class UserStoriesRequest(
 )
 
 data class UserStoriesResponse(
+    val success: Boolean,
+    val message: String,
+    val data: StoryData?
+)
+
+data class StoryData(
     val stories: List<Story>,
     val count: Int,
     val username: String
 )
+
 
 data class AllStoriesRequest(
     val auth_token: String

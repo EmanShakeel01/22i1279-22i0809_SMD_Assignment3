@@ -1,7 +1,9 @@
 package com.FEdev.i221279_i220809
 
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.util.Base64
 import android.util.Log
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -14,8 +16,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.FEdev.i221279_i220809.models.GetPostsRequest
-import com.FEdev.i221279_i220809.models.Post
+import com.FEdev.i221279_i220809.models.*
 import com.FEdev.i221279_i220809.network.RetrofitClient
 import com.FEdev.i221279_i220809.utils.SessionManager
 import com.google.firebase.auth.FirebaseAuth
@@ -29,7 +30,7 @@ class homepage : AppCompatActivity() {
     private lateinit var postRecyclerView: RecyclerView
     private lateinit var postList: ArrayList<Post>
     private lateinit var postAdapter: PostAdapter
-    private var storyUsersData: MutableList<Pair<String, String>> = mutableListOf()
+    private var storyUsersData: MutableList<UserStoryPreview> = mutableListOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,9 +50,9 @@ class homepage : AppCompatActivity() {
         // ------------------- NAVIGATION BUTTONS -------------------
         setupNavigation()
 
-        // ------------------- STORY SECTION (Firebase) -------------------
+        // ------------------- STORY SECTION (Web Service) -------------------
         setupMyStoryClick()
-        loadStoryUsers()
+        loadStoryUsersFromWebService() // ✅ Changed to Web Service
 
         // ------------------- POSTS FEED (Web Service) -------------------
         setupPostsRecyclerView()
@@ -111,13 +112,13 @@ class homepage : AppCompatActivity() {
         }
     }
 
-    // ------------------- STORY HANDLING (Firebase) -------------------
+    // ------------------- STORY HANDLING (Web Service) -------------------
     private fun setupMyStoryClick() {
         val myStory = findViewById<CircleImageView>(R.id.story1)
         val addStoryBtn = findViewById<ImageView>(R.id.add_story)
 
         myStory.setOnClickListener {
-            checkUserStories(openCameraIfNone = false)
+            checkUserStoriesFromWebService(openCameraIfNone = false)
         }
 
         addStoryBtn.setOnClickListener {
@@ -127,106 +128,201 @@ class homepage : AppCompatActivity() {
         }
     }
 
-    private fun loadStoryUsers() {
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val storiesRef = FirebaseDatabase.getInstance().getReference("Stories")
-        val usersRef = FirebaseDatabase.getInstance().getReference("users")
+    // ✅ NEW: Load stories from Web Service instead of Firebase
+    private fun loadStoryUsersFromWebService() {
+        val authToken = sessionManager.getAuthToken()
 
-        storiesRef.get().addOnSuccessListener { storiesSnapshot ->
-            storyUsersData.clear()
+        if (authToken == null) {
+            Log.e("HomePage", "No auth token for loading stories")
+            return
+        }
 
-            for (storySnap in storiesSnapshot.children) {
-                val userId = storySnap.key ?: continue
-                if (userId != currentUserId) {
-                    storyUsersData.add(Pair(userId, "Loading..."))
-                }
-            }
+        lifecycleScope.launch {
+            try {
+                val request = AllStoriesRequest(auth_token = authToken)
+                val response = RetrofitClient.apiService.getAllStories(request)
 
-            usersRef.get().addOnSuccessListener { usersSnapshot ->
-                for (i in storyUsersData.indices) {
-                    val userId = storyUsersData[i].first
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
 
-                    for (userSnap in usersSnapshot.children) {
-                        val uid = userSnap.child("uid").getValue(String::class.java)
-                        if (uid == userId) {
-                            val username = userSnap.child("username").getValue(String::class.java) ?: "User"
-                            storyUsersData[i] = Pair(userId, username)
-                            Log.d("StoryUsers", "Found user: $username with ID: $userId")
-                            break
+                    if (data != null && data.user_stories.isNotEmpty()) {
+                        storyUsersData.clear()
+
+                        // Separate own stories from others
+                        val ownStories = data.user_stories.filter { it.is_own }
+                        val otherStories = data.user_stories.filter { !it.is_own }
+
+                        storyUsersData.addAll(otherStories)
+
+                        Log.d("HomePage", "✅ Loaded ${data.total_users} users with stories")
+
+                        // Update UI with story circles
+                        updateStoryNamesUI()
+
+                        // Update "My Story" circle if user has stories
+                        if (ownStories.isNotEmpty()) {
+                            updateMyStoryCircle(ownStories[0])
                         }
+                    } else {
+                        Log.d("HomePage", "No stories available")
                     }
+                } else {
+                    Log.e("HomePage", "❌ Failed to load stories: ${response.body()?.message}")
                 }
-
-                updateStoryNamesUI()
+            } catch (e: Exception) {
+                Log.e("HomePage", "❌ Error loading stories: ${e.message}", e)
             }
-        }.addOnFailureListener { e ->
-            Log.e("StoryUsersError", "Failed to load stories: ${e.message}")
         }
     }
 
+    // ✅ NEW: Update "My Story" circle with preview image
+    private fun updateMyStoryCircle(myStory: UserStoryPreview) {
+        val myStoryCircle = findViewById<CircleImageView>(R.id.story1)
+
+        try {
+            val imageBytes = Base64.decode(myStory.preview_image, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            if (bitmap != null) {
+                myStoryCircle.setImageBitmap(bitmap)
+                Log.d("HomePage", "✅ Updated my story preview image")
+            }
+        } catch (e: Exception) {
+            Log.e("HomePage", "Error decoding my story preview: ${e.message}")
+        }
+    }
+
+    // ✅ UPDATED: Update story circles with web service data
     private fun updateStoryNamesUI() {
+        // Story 2
         if (storyUsersData.size > 0) {
-            val (userId, username) = storyUsersData[0]
+            val userStory = storyUsersData[0]
             val story2View = findViewById<LinearLayout>(R.id.story2_container)
             val story2Text = story2View.findViewWithTag<TextView>("story_username")
-            story2Text?.text = username
-            story2View.setOnClickListener { openUserStory(userId, username) }
+            val story2Image = story2View.findViewWithTag<CircleImageView>("story_image")
+
+            story2Text?.text = userStory.username
+
+            // Set preview image
+            try {
+                val imageBytes = Base64.decode(userStory.preview_image, Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                if (bitmap != null) {
+                    story2Image?.setImageBitmap(bitmap)
+                }
+            } catch (e: Exception) {
+                Log.e("HomePage", "Error decoding story 2 preview: ${e.message}")
+            }
+
+            story2View.setOnClickListener {
+                openUserStoryFromWebService(userStory.user_id, userStory.username)
+            }
         }
 
+        // Story 3
         if (storyUsersData.size > 1) {
-            val (userId, username) = storyUsersData[1]
+            val userStory = storyUsersData[1]
             val story3View = findViewById<LinearLayout>(R.id.story3_container)
             val story3Text = story3View.findViewWithTag<TextView>("story_username")
-            story3Text?.text = username
-            story3View.setOnClickListener { openUserStory(userId, username) }
+            val story3Image = story3View.findViewWithTag<CircleImageView>("story_image")
+
+            story3Text?.text = userStory.username
+
+            // Set preview image
+            try {
+                val imageBytes = Base64.decode(userStory.preview_image, Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                if (bitmap != null) {
+                    story3Image?.setImageBitmap(bitmap)
+                }
+            } catch (e: Exception) {
+                Log.e("HomePage", "Error decoding story 3 preview: ${e.message}")
+            }
+
+            story3View.setOnClickListener {
+                openUserStoryFromWebService(userStory.user_id, userStory.username)
+            }
         }
 
+        // Story 4
         if (storyUsersData.size > 2) {
-            val (userId, username) = storyUsersData[2]
+            val userStory = storyUsersData[2]
             val story4View = findViewById<LinearLayout>(R.id.story4_container)
             val story4Text = story4View.findViewWithTag<TextView>("story_username")
-            story4Text?.text = username
-            story4View.setOnClickListener { openUserStory(userId, username) }
+            val story4Image = story4View.findViewWithTag<CircleImageView>("story_image")
+
+            story4Text?.text = userStory.username
+
+            // Set preview image
+            try {
+                val imageBytes = Base64.decode(userStory.preview_image, Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                if (bitmap != null) {
+                    story4Image?.setImageBitmap(bitmap)
+                }
+            } catch (e: Exception) {
+                Log.e("HomePage", "Error decoding story 4 preview: ${e.message}")
+            }
+
+            story4View.setOnClickListener {
+                openUserStoryFromWebService(userStory.user_id, userStory.username)
+            }
         }
     }
 
-    private fun openUserStory(userId: String, username: String) {
+    // ✅ NEW: Open user story with web service (pass user_id as Int)
+    private fun openUserStoryFromWebService(userId: Int, username: String) {
         val intent = Intent(this, storyviewer::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        intent.putExtra("userId", userId)
+        intent.putExtra("userId", userId) // Pass as Int
         intent.putExtra("username", username)
         startActivity(intent)
     }
 
-    private fun checkUserStories(openCameraIfNone: Boolean) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val storiesRef = FirebaseDatabase.getInstance().getReference("Stories").child(userId)
+    // ✅ NEW: Check if user has stories via web service
+    private fun checkUserStoriesFromWebService(openCameraIfNone: Boolean) {
+        val authToken = sessionManager.getAuthToken()
 
-        storiesRef.get().addOnSuccessListener { snapshot ->
-            val currentTime = System.currentTimeMillis()
-            var hasValidStory = false
+        if (authToken == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-            for (storySnap in snapshot.children) {
-                val expiresAt = storySnap.child("expiresAt").getValue(Long::class.java) ?: 0L
-                if (currentTime <= expiresAt) {
-                    hasValidStory = true
-                    break
+        lifecycleScope.launch {
+            try {
+                val request = MyStoriesRequest(auth_token = authToken)
+                val response = RetrofitClient.apiService.getMyStories(request)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+
+                    if (data != null && data.stories.isNotEmpty()) {
+                        // Has stories, open viewer
+                        val intent = Intent(this@homepage, storyviewer2::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        startActivity(intent)
+                    } else {
+                        // No stories
+                        if (openCameraIfNone) {
+                            val intent = Intent(this@homepage, takepicture::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            startActivity(intent)
+                        } else {
+                            Toast.makeText(this@homepage, "No active story", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                    if (openCameraIfNone) {
+                        val intent = Intent(this@homepage, takepicture::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        startActivity(intent)
+                    } else {
+                        Toast.makeText(this@homepage, "No active story", Toast.LENGTH_SHORT).show()
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e("HomePage", "Error checking stories: ${e.message}")
+                Toast.makeText(this@homepage, "Error loading stories", Toast.LENGTH_SHORT).show()
             }
-
-            if (hasValidStory) {
-                val intent = Intent(this, storyviewer2::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                startActivity(intent)
-            } else if (openCameraIfNone) {
-                val intent = Intent(this, takepicture::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                startActivity(intent)
-            } else {
-                Toast.makeText(this, "No active story", Toast.LENGTH_SHORT).show()
-            }
-        }.addOnFailureListener {
-            Log.e("CheckStories", "Error: ${it.message}")
         }
     }
 
@@ -318,8 +414,9 @@ class homepage : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh posts when returning to homepage
+        // Refresh posts and stories when returning to homepage
         loadPostsFromWebService()
+        loadStoryUsersFromWebService() // ✅ Refresh stories too
     }
 
     override fun onDestroy() {

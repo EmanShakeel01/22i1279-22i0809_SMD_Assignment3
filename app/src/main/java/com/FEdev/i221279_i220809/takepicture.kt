@@ -1,7 +1,3 @@
-
-// ============================================
-// 2. UPDATED takepicture.kt (Remove duplicate upload)
-// ============================================
 package com.FEdev.i221279_i220809
 
 import android.app.Activity
@@ -15,11 +11,7 @@ import android.util.Base64
 import android.util.Log
 import android.widget.ImageView
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.firebase.auth.FirebaseAuth
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 
@@ -33,15 +25,8 @@ class takepicture : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_takepicture)
-        Log.d("ActivityStack", "takepicture onCreate")
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
+        Log.d("TakePicture", "onCreate")
 
         shutterButton = findViewById(R.id.shutterButton)
         galleryButton = findViewById(R.id.galleryPreview)
@@ -65,14 +50,10 @@ class takepicture : AppCompatActivity() {
         // 🔙 Back to homepage
         val backButton = findViewById<ImageView>(R.id.back)
         backButton.setOnClickListener {
-            val intent = Intent(this, homepage::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
             finish()
         }
     }
 
-    // 🎯 Handle camera/gallery result
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -98,32 +79,63 @@ class takepicture : AppCompatActivity() {
             }
 
             if (bitmap != null) {
-                val imageBase64 = encodeToBase64(bitmap)
+                // ✅ Compress and scale image before encoding
+                val compressedBitmap = compressImage(bitmap)
+                val imageBase64 = encodeToBase64(compressedBitmap)
 
-                // ✅ Go to story preview screen (same for camera + gallery)
+                Log.d("TakePicture", "Image size: ${imageBase64.length} characters")
+
+                // Go to story preview screen
                 val previewIntent = Intent(this, storyviewer1::class.java)
                 previewIntent.putExtra("imageBase64", imageBase64)
                 startActivity(previewIntent)
             } else {
-                Toast.makeText(this, "❌ Could not process image", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Could not process image", Toast.LENGTH_SHORT).show()
             }
         } catch (e: IOException) {
-            Log.e("ImageError", "Error loading image: ${e.message}")
+            Log.e("TakePicture", "Error loading image: ${e.message}", e)
             Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show()
+        } catch (e: OutOfMemoryError) {
+            Log.e("TakePicture", "Out of memory: ${e.message}", e)
+            Toast.makeText(this, "Image too large", Toast.LENGTH_SHORT).show()
         }
     }
 
+    // ✅ Compress and scale image
+    private fun compressImage(bitmap: Bitmap): Bitmap {
+        val maxWidth = 1080
+        val maxHeight = 1920
 
-    // 🧠 Encode bitmap to Base64
+        var width = bitmap.width
+        var height = bitmap.height
+
+        // Calculate scale factor
+        val scale = minOf(
+            maxWidth.toFloat() / width.toFloat(),
+            maxHeight.toFloat() / height.toFloat(),
+            1.0f // Don't upscale
+        )
+
+        if (scale < 1.0f) {
+            width = (width * scale).toInt()
+            height = (height * scale).toInt()
+            return Bitmap.createScaledBitmap(bitmap, width, height, true)
+        }
+
+        return bitmap
+    }
+
+    // ✅ Encode bitmap to Base64 with compression
     private fun encodeToBase64(bitmap: Bitmap): String {
         val baos = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, baos)
+        // Compress to 70% quality JPEG
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos)
         val byteArray = baos.toByteArray()
-        return Base64.encodeToString(byteArray, Base64.DEFAULT)
+        return Base64.encodeToString(byteArray, Base64.NO_WRAP) // NO_WRAP removes newlines
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d("ActivityStack", "takepicture onDestroy")
+        Log.d("TakePicture", "onDestroy")
     }
 }

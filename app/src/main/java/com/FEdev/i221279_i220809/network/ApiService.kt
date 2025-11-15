@@ -25,8 +25,8 @@ interface ApiService {
     @POST("get_my_stories.php")
     suspend fun getMyStories(@Body request: MyStoriesRequest): Response<ApiResponse<MyStoriesResponse>>
 
-    @POST("get_user_stories.php")
-    suspend fun getUserStories(@Body request: UserStoriesRequest): Response<ApiResponse<UserStoriesResponse>>
+    @POST("get_users_stories.php")
+    suspend fun getUserStories(@Body request: UserStoriesRequest): Response<UserStoriesResponse>
 
     @POST("get_all_stories.php")
     suspend fun getAllStories(@Body request: AllStoriesRequest): Response<ApiResponse<AllStoriesResponse>>

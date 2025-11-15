@@ -1,7 +1,6 @@
 package com.FEdev.i221279_i220809
 
 import android.animation.ObjectAnimator
-import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Base64
@@ -19,8 +18,6 @@ import com.FEdev.i221279_i220809.models.MyStoriesRequest
 import com.FEdev.i221279_i220809.models.Story
 import com.FEdev.i221279_i220809.utils.SessionManager
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 class storyviewer2 : AppCompatActivity() {
 
@@ -36,14 +33,14 @@ class storyviewer2 : AppCompatActivity() {
     private var progressAnimators: MutableList<ObjectAnimator> = mutableListOf()
 
     companion object {
-        private const val STORY_DURATION = 5000L // 5 seconds
+        private const val STORY_DURATION = 5000L
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_storyviewer2)
 
-        Log.d("StoryViewer2", "onCreate")
+        Log.d("StoryViewer2", "=== onCreate ===")
 
         sessionManager = SessionManager(this)
 
@@ -56,6 +53,7 @@ class storyviewer2 : AppCompatActivity() {
 
         // Tap to next story
         storyImage.setOnClickListener {
+            Log.d("StoryViewer2", "Image tapped")
             stopCurrentProgress()
             if (currentIndex < storyList.size - 1) {
                 displayStory(currentIndex + 1)
@@ -67,6 +65,7 @@ class storyviewer2 : AppCompatActivity() {
 
         // Back button
         backButton.setOnClickListener {
+            Log.d("StoryViewer2", "Back clicked")
             finish()
         }
 
@@ -78,15 +77,20 @@ class storyviewer2 : AppCompatActivity() {
         val authToken = sessionManager.getAuthToken()
 
         if (authToken == null) {
+            Log.e("StoryViewer2", "❌ No auth token")
             Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
+        Log.d("StoryViewer2", "Loading my stories...")
+
         lifecycleScope.launch {
             try {
                 val request = MyStoriesRequest(auth_token = authToken)
                 val response = RetrofitClient.apiService.getMyStories(request)
+
+                Log.d("StoryViewer2", "Response code: ${response.code()}")
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
@@ -101,6 +105,7 @@ class storyviewer2 : AppCompatActivity() {
                         // Show first story
                         displayStory(0)
                     } else {
+                        Log.d("StoryViewer2", "No stories found")
                         Toast.makeText(
                             this@storyviewer2,
                             "No stories available",
@@ -109,6 +114,7 @@ class storyviewer2 : AppCompatActivity() {
                         finish()
                     }
                 } else {
+                    Log.e("StoryViewer2", "❌ API failed: ${response.body()?.message}")
                     Toast.makeText(
                         this@storyviewer2,
                         response.body()?.message ?: "Failed to load stories",
@@ -117,11 +123,11 @@ class storyviewer2 : AppCompatActivity() {
                     finish()
                 }
             } catch (e: Exception) {
-                Log.e("StoryViewer2", "❌ Error: ${e.message}", e)
+                Log.e("StoryViewer2", "❌ Exception: ${e.message}", e)
                 Toast.makeText(
                     this@storyviewer2,
-                    "Network error",
-                    Toast.LENGTH_SHORT
+                    "Network error: ${e.message}",
+                    Toast.LENGTH_LONG
                 ).show()
                 finish()
             }
@@ -131,6 +137,8 @@ class storyviewer2 : AppCompatActivity() {
     private fun createProgressBars() {
         progressBarsContainer.removeAllViews()
         progressAnimators.clear()
+
+        Log.d("StoryViewer2", "Creating ${storyList.size} progress bars")
 
         for (i in storyList.indices) {
             val progressBar = View(this)
@@ -144,20 +152,30 @@ class storyviewer2 : AppCompatActivity() {
     }
 
     private fun displayStory(index: Int) {
-        if (index < 0 || index >= storyList.size) return
+        if (index < 0 || index >= storyList.size) {
+            Log.e("StoryViewer2", "Invalid index: $index")
+            return
+        }
 
         currentIndex = index
         val story = storyList[index]
 
+        Log.d("StoryViewer2", "Displaying story ${index + 1}/${storyList.size}")
+
         // Display image
         try {
-            val imageBytes = Base64.decode(story.image_base64, Base64.DEFAULT)
+            val cleanBase64 = story.image_base64.replace("\n", "").replace("\r", "")
+            val imageBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
             val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+
             if (bitmap != null) {
                 storyImage.setImageBitmap(bitmap)
+                Log.d("StoryViewer2", "✅ Story image displayed")
+            } else {
+                Log.e("StoryViewer2", "❌ Bitmap is null")
             }
         } catch (e: Exception) {
-            Log.e("StoryViewer2", "Error decoding image: ${e.message}")
+            Log.e("StoryViewer2", "❌ Error decoding image: ${e.message}", e)
         }
 
         // Update story count
@@ -195,6 +213,8 @@ class storyviewer2 : AppCompatActivity() {
 
         val currentProgressBar = progressBarsContainer.getChildAt(currentIndex)
         if (currentProgressBar != null) {
+            Log.d("StoryViewer2", "Starting animation for story $currentIndex")
+
             val animator = ObjectAnimator.ofFloat(currentProgressBar, "scaleX", 0f, 1f)
             animator.duration = STORY_DURATION
             animator.start()
@@ -205,6 +225,7 @@ class storyviewer2 : AppCompatActivity() {
                 if (currentIndex < storyList.size - 1) {
                     displayStory(currentIndex + 1)
                 } else {
+                    Log.d("StoryViewer2", "Last story, closing")
                     finish()
                 }
             }, STORY_DURATION)
@@ -231,15 +252,18 @@ class storyviewer2 : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         stopCurrentProgress()
+        Log.d("StoryViewer2", "=== onDestroy ===")
     }
 
     override fun onPause() {
         super.onPause()
         stopCurrentProgress()
+        Log.d("StoryViewer2", "=== onPause ===")
     }
 
     override fun onResume() {
         super.onResume()
+        Log.d("StoryViewer2", "=== onResume ===")
         if (storyList.isNotEmpty()) {
             startProgressAnimation()
         }
