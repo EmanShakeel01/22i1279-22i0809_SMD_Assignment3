@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- Post Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp">
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/post_profile_pic"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/mystory"
+            android:layout_alignParentStart="true"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/username"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="joshua_l"
+            android:textStyle="bold"
+            android:layout_toEndOf="@id/post_profile_pic"
+            android:layout_marginStart="10dp"
+            android:layout_alignTop="@id/post_profile_pic" />
+
+        <TextView
+            android:id="@+id/location"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tokyo, Japan"
+            android:textSize="12sp"
+            android:layout_below="@id/username"
+            android:layout_toEndOf="@id/post_profile_pic"
+            android:layout_marginStart="10dp" />
+
+        <ImageView
+            android:id="@+id/more"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/options"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true" />
+    </RelativeLayout>
+
+    <!-- Post Image -->
+    <ImageView
+        android:id="@+id/post_image"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/postsample" />
+
+    <!-- Post Actions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <ImageView
+            android:id="@+id/btnlike"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/like"
+            android:layout_marginEnd="10dp" />
+
+        <ImageView
+            android:id="@+id/btncomment"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/comment"
+            android:layout_marginEnd="10dp" />
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginTop="4dp"
+            android:src="@drawable/share" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginTop="4dp"
+            android:src="@drawable/save" />
+    </LinearLayout>
+
+    <!-- Likes + Caption -->
+    <TextView
+        android:id="@+id/likes"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingStart="10dp"
+        android:paddingBottom="5dp"
+        android:text="Liked by craig_love and 44,686 others"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/caption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="joshua_l  The game in Japan was amazing and I want to share some photos"
+        android:padding="10dp" />
+
+</LinearLayout>

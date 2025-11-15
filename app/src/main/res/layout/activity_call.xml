@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/darkbrown"
+    tools:context=".CallActivity">
+
+    <!-- Remote video (fills screen behind everything) -->
+    <FrameLayout
+        android:id="@+id/remote_video_view_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Local preview (small top-right box) -->
+    <FrameLayout
+        android:id="@+id/local_video_view_container"
+        android:layout_width="120dp"
+        android:layout_height="160dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="12dp"
+        android:background="#222222"
+        android:elevation="10dp" />
+
+    <!-- Profile Image -->
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/profileImage"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="180dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/profile7"
+        app:shapeAppearanceOverlay="@style/RoundedImageStyle" />
+
+    <!-- Contact Name -->
+    <TextView
+        android:id="@+id/contactName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mother ❤️"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:layout_below="@id/profileImage"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="12dp" />
+
+    <!-- Call Duration -->
+    <TextView
+        android:id="@+id/callDuration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="00:00"
+        android:textSize="16sp"
+        android:textColor="@android:color/white"
+        android:layout_below="@id/contactName"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="6dp" />
+
+    <!-- Bottom Control Buttons -->
+    <LinearLayout
+        android:id="@+id/controlButtons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="50dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:weightSum="4">
+
+        <ImageButton
+            android:id="@+id/muteButton"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_weight="1"
+            android:src="@drawable/mic"
+            android:background="@android:color/transparent"
+            app:tint="@android:color/white"
+            android:padding="10dp" />
+
+        <ImageButton
+            android:id="@+id/endCallButton"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_weight="1"
+            android:src="@drawable/call"
+            android:background="@drawable/round_red"
+            app:tint="@android:color/white"
+            android:layout_marginLeft="30dp"
+            android:layout_marginRight="30dp" />
+
+        <ImageButton
+            android:id="@+id/switchCameraButton"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_weight="1"
+            android:src="@drawable/camera"
+            android:background="@android:color/transparent"
+            app:tint="@android:color/white"
+            android:padding="10dp" />
+
+        <ImageButton
+            android:id="@+id/speakerBtn"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_weight="1"
+            android:src="@drawable/soundon"
+            android:background="@android:color/transparent"
+            app:tint="@android:color/white"
+            android:padding="10dp" />
+    </LinearLayout>
+
+</RelativeLayout>

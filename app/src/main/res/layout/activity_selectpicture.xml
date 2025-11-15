@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:orientation="vertical"
+    android:layout_height="match_parent"
+    tools:context=".selectpicture">
+
+    <!-- Top Bar -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/cancelText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/pink"
+            android:textStyle="bold"
+            android:text="Cancel"
+            android:textSize="16sp"
+
+            android:layout_alignParentStart="true" />
+
+        <TextView
+            android:id="@+id/albumTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Recents ▼"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/pink"
+            android:layout_centerInParent="true" />
+
+        <TextView
+            android:id="@+id/next"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Next"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/pink"
+
+            android:layout_alignParentEnd="true" />
+    </RelativeLayout>
+
+    <!-- Selected Image Preview -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="250dp">
+
+        <ImageView
+            android:id="@+id/selectedImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/profile7" />
+
+        <!-- Bottom overlay buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:padding="8dp"
+            android:background="#80000000">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/music"
+                app:tint="@color/white"
+                android:layout_marginHorizontal="8dp" />
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/grid"
+                app:tint="@color/white"
+                android:layout_marginHorizontal="8dp" />
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginHorizontal="8dp"
+                android:src="@drawable/multiple"
+                app:tint="@color/white" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SELECT MULTIPLE"
+                android:textColor="@android:color/white"
+                android:layout_marginHorizontal="8dp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Gallery Grid -->
+    <!-- Scrollable Section -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="3"
+            android:orientation="horizontal"
+            android:useDefaultMargins="true"
+            android:padding="2dp"
+            android:layout_marginTop="12dp">
+
+            <!-- Row 1 -->
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/profile1" />
+
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/postsample" />
+
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/profile3" />
+
+            <!-- Row 2 -->
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/profile4" />
+
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/profile5" />
+
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/profile6" />
+
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/postsample" />
+
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/mystory" />
+
+            <ImageView
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_columnWeight="1"
+                android:scaleType="centerCrop"
+                android:src="@drawable/profile6" />
+
+        </GridLayout>
+    </ScrollView>
+
+
+    <!-- Bottom Navigation -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@android:color/white"
+        android:elevation="4dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Library"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/pink"
+            android:layout_marginHorizontal="24dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Photo"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/pink"
+            android:layout_marginHorizontal="24dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Video"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/pink"
+            android:layout_marginHorizontal="24dp" />
+
+    </LinearLayout>
+
+
+</LinearLayout>

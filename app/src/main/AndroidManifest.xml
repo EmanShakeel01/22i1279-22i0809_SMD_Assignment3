@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- ✅ Permissions -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".MyApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="i221279"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme._22i127922i0809_Assignment3">
+
+        <service
+            android:name=".MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/white" />
+
+        <!-- ✅ Auto-initialize FCM -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="true" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="true" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider> <!-- ✅ Activities -->
+        <activity
+            android:name=".IncomingCallActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ChatInboxActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CommentsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activityprofile2"
+            android:exported="false" />
+        <activity
+            android:name=".activityprofile"
+            android:exported="false" />
+        <activity
+            android:name=".storyviewer2"
+            android:exported="false" />
+        <activity
+            android:name=".storyviewer1"
+            android:exported="false" />
+        <activity
+            android:name=".storyviewer"
+            android:exported="false" />
+        <activity
+            android:name=".takepicture"
+            android:exported="false" />
+        <activity
+            android:name=".selectpicture"
+            android:exported="false" />
+        <activity
+            android:name=".editprofile"
+            android:exported="false" />
+        <activity
+            android:name=".highlights"
+            android:exported="false" />
+        <activity
+            android:name=".myprofilepage"
+            android:exported="false" />
+        <activity
+            android:name=".activityyou"
+            android:exported="false" />
+        <activity
+            android:name=".activitypage"
+            android:exported="false" />
+        <activity
+            android:name=".CallActivity"
+            android:exported="false" />
+        <activity
+            android:name=".inbox"
+            android:exported="false" />
+        <activity
+            android:name=".chatlist"
+            android:exported="false" />
+        <activity
+            android:name=".searchbar"
+            android:exported="false" />
+        <activity
+            android:name=".searchpage"
+            android:exported="false" />
+        <activity
+            android:name=".homepage"
+            android:exported="false" />
+        <activity
+            android:name=".login2"
+            android:exported="false" />
+        <activity
+            android:name=".Login1"
+            android:exported="false" />
+        <activity
+            android:name=".signup"
+            android:exported="false" /> <!-- ✅ Launcher -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

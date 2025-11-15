@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000"
+    tools:context=".takepicture">
+
+    <!-- Top status bar (for design consistency) -->
+
+
+    <!-- Camera preview (background) -->
+    <TextureView
+        android:id="@+id/cameraPreview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/top"
+        android:scaleType="centerCrop" />
+
+    <!-- Preview of selected image -->
+    <ImageView
+        android:id="@+id/middlePicture"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:adjustViewBounds="true"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        android:background="@android:color/transparent" />
+
+    <!-- Back button at top-left -->
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:layout_alignParentTop="true"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/back"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/back"
+            app:tint="@android:color/white"
+            android:contentDescription="Back" />
+    </LinearLayout>
+
+    <!-- Bottom control bar (gallery + shutter + switch) -->
+    <LinearLayout
+        android:id="@+id/bottomControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingBottom="16dp">
+
+        <!-- Row of buttons -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Open Gallery -->
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/galleryPreview"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:src="@drawable/img"
+                android:layout_marginEnd="24dp"
+                app:civ_circle_background_color="@android:color/darker_gray"
+                android:scaleType="centerCrop"
+                android:contentDescription="Open Gallery" />
+
+            <!-- Take Photo -->
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/shutterButton"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/camera1"
+                app:civ_circle_background_color="@android:color/white"
+                android:layout_marginHorizontal="8dp"
+                android:contentDescription="Take Photo" />
+
+            <!-- Switch Camera (optional) -->
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/cameraSwitch"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:src="@android:drawable/ic_menu_rotate"
+                android:tint="@android:color/white"
+                app:civ_circle_background_color="@android:color/transparent"
+                android:layout_marginStart="24dp"
+                android:contentDescription="Switch Camera" />
+        </LinearLayout>
+
+        <!-- Mode Selector (visual only) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TYPE"
+                android:textColor="@color/pink"
+                android:paddingHorizontal="12dp"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="LIVE"
+                android:textColor="@color/pink"
+                android:paddingHorizontal="12dp"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NORMAL"
+                android:textColor="@color/pink"
+                android:paddingHorizontal="12dp"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BOOMERANG"
+                android:textColor="@color/pink"
+                android:paddingHorizontal="12dp"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SUPERZOOM"
+                android:textColor="@color/pink"
+                android:paddingHorizontal="12dp"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>

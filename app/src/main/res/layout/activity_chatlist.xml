@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".chatlist">
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:gravity="center_vertical"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp">
+
+        <ImageView
+            android:id="@+id/back"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/arrow_right"
+            app:tint="@android:color/black" />
+
+        <TextView
+            android:id="@+id/titleUser"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Messages"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginStart="16dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp"
+        android:layout_margin="12dp"
+        android:background="#F5F5F5">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/search"
+            app:tint="@android:color/darker_gray" />
+
+        <EditText
+            android:id="@+id/search_message"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@android:color/transparent"
+            android:hint="Search by username or email"
+            android:singleLine="true"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/usersRecycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        tools:listitem="@layout/item_user_row"/>
+</LinearLayout>

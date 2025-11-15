@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="btnBack" type="id"/>
+    <item name="userAvatar" type="id"/>
+    <item name="userName" type="id"/>
+    <item name="userStatus" type="id"/>
+    <item name="btnMoreOptions" type="id"/>
+    <item name="messagesRecyclerView" type="id"/>
+    <item name="btnGallery" type="id"/>
+    <item name="btnSend" type="id"/>
+    <item name="profileUsername" type="id"/>
+</resources>

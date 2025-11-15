@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".homepage">
+
+    <!-- Header Container (Status, Title, Stories) -->
+    <LinearLayout
+        android:id="@+id/header_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:orientation="vertical">
+
+        <!-- Status Bar -->
+
+
+        <!-- Top Bar -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:padding="10dp">
+
+            <!-- Center Title -->
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Socially"
+                android:textSize="20sp"
+                android:textColor="@color/pink"
+                android:textStyle="bold"
+                android:layout_centerInParent="true" />
+
+            <!-- Right Message -->
+            <ImageView
+                android:id="@+id/message1"
+                android:layout_width="19dp"
+                android:layout_height="20dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/share"
+                app:tint="@color/pink" />
+
+            <!-- Camera Icon -->
+            <ImageView
+                android:id="@+id/camera1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="12dp"
+                android:src="@drawable/camera1"
+                app:tint="@color/pink" />
+        </RelativeLayout>
+
+        <!-- Stories Row -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="90dp"
+            android:scrollbars="none"
+            android:padding="5dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <!-- Story 1 (My Story with + icon) -->
+                <FrameLayout
+                    android:layout_width="80dp"
+                    android:layout_height="match_parent"
+                    android:gravity="center">
+
+                    <de.hdodenhof.circleimageview.CircleImageView
+                        android:id="@+id/story1"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:src="@drawable/mystory"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="-10dp"
+                        android:scaleType="centerCrop"
+                        app:civ_border_width="3dp"
+                        app:civ_border_color="@color/red" />
+
+                    <!-- + Icon overlay -->
+                    <ImageView
+                        android:id="@+id/add_story"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="bottom|end"
+                        android:layout_marginBottom="10dp"
+                        android:layout_marginEnd="5dp"
+                        android:src="@drawable/ic_add"
+                        android:background="@drawable/add_story_circle_bg"
+                        android:padding="3dp"
+                        android:contentDescription="Add Story"
+                        android:elevation="3dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Your Story"
+                        android:textSize="12sp"
+                        android:layout_gravity="center_horizontal|bottom"
+                        android:layout_marginBottom="-2dp"
+                        android:paddingTop="5dp" />
+                </FrameLayout>
+
+                <!-- Story 2 -->
+                <LinearLayout
+                    android:id="@+id/story2_container"
+                    android:layout_width="80dp"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <de.hdodenhof.circleimageview.CircleImageView
+                        android:id="@+id/story2"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:src="@drawable/profile1"
+                        android:layout_gravity="center"
+                        android:layout_marginBottom="5dp"
+                        android:scaleType="centerCrop"
+                        app:civ_border_width="3dp"
+                        app:civ_border_color="@color/red" />
+
+                    <TextView
+                        android:tag="story_username"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Alice"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Story 3 -->
+                <LinearLayout
+                    android:id="@+id/story3_container"
+                    android:layout_width="80dp"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <de.hdodenhof.circleimageview.CircleImageView
+                        android:id="@+id/story3"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:src="@drawable/profile2"
+                        android:layout_gravity="center"
+                        android:layout_marginBottom="5dp"
+                        android:scaleType="centerCrop"
+                        app:civ_border_width="3dp"
+                        app:civ_border_color="@color/red" />
+
+                    <TextView
+                        android:tag="story_username"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="John"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Story 4 -->
+                <LinearLayout
+                    android:id="@+id/story4_container"
+                    android:layout_width="80dp"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <de.hdodenhof.circleimageview.CircleImageView
+                        android:id="@+id/story4"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:src="@drawable/profile3"
+                        android:layout_gravity="center"
+                        android:layout_marginBottom="5dp"
+                        android:scaleType="centerCrop"
+                        app:civ_border_width="3dp"
+                        app:civ_border_color="@color/red" />
+
+                    <TextView
+                        android:tag="story_username"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sophia"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
+
+    <!-- RecyclerView for Posts (below header, above bottom nav) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/postRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/header_container"
+        android:layout_above="@id/bottom_bar"
+        android:overScrollMode="never"
+        tools:listitem="@layout/item_post" />
+
+    <!-- Bottom Navigation Bar -->
+    <LinearLayout
+        android:id="@+id/bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:orientation="horizontal"
+        android:background="@color/white"
+        android:gravity="center"
+        android:weightSum="5"
+        android:layout_marginBottom="0dp"
+        android:layout_alignParentBottom="true"
+        android:elevation="8dp">
+
+        <ImageView
+            android:id="@+id/nav_home"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:src="@drawable/home"
+            android:scaleType="centerInside"
+            app:tint="@color/darkbrown"
+            android:padding="10dp" />
+
+        <ImageView
+            android:id="@+id/nav_search"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:src="@drawable/search"
+            android:scaleType="centerInside"
+            app:tint="@color/darkbrown"
+            android:padding="10dp" />
+
+        <ImageView
+            android:id="@+id/add"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="10dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/add"
+            app:tint="@color/darkbrown" />
+
+        <ImageView
+            android:id="@+id/nav_like"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:src="@drawable/like"
+            android:scaleType="centerInside"
+            app:tint="@color/darkbrown"
+            android:padding="6dp" />
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/nav_profile"
+            android:layout_width="0dp"
+            android:layout_height="35dp"
+            android:layout_weight="1"
+            android:src="@drawable/mystory"
+            app:civ_border_width="2dp"
+            app:civ_border_color="@color/pink"
+            android:scaleType="centerCrop" />
+    </LinearLayout>
+
+    <!-- Bottom Line -->
+
+
+</RelativeLayout>

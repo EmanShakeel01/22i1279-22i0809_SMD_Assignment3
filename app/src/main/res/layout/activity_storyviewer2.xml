@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    tools:context=".storyviewer2">
+
+    <!-- Top status bar -->
+
+
+    <!-- Story progress bars (one for each story) -->
+    <LinearLayout
+        android:id="@+id/progressBarsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_below="@id/top"
+        android:orientation="horizontal"
+        android:gravity="fill"
+        android:background="@color/black">
+        <!-- Progress bars will be added dynamically -->
+    </LinearLayout>
+
+    <!-- Top bar with back (left), story count (center), and profile (right) -->
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_below="@id/progressBarsContainer"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:background="@android:color/transparent">
+
+        <!-- Back button (left) -->
+        <ImageView
+            android:id="@+id/back"
+            android:layout_width="31dp"
+            android:layout_height="36dp"
+            android:src="@drawable/back"
+            app:tint="@color/white"
+            android:contentDescription="Back" />
+
+        <!-- Story count (center) -->
+        <TextView
+            android:id="@+id/storyCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="1 / 3"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:fontFamily="@font/inder_regular"
+            android:textStyle="bold" />
+
+        <!-- Profile area (right) - optional -->
+        <ImageView
+            android:id="@+id/profileImage"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/mystory"
+            android:scaleType="centerCrop"
+            android:contentDescription="Profile"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Story Image filling screen -->
+    <ImageView
+        android:id="@+id/storyImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/topBar"
+        android:layout_above="@id/bottomNav"
+        android:scaleType="centerCrop"
+      />
+
+    <!-- Left half - tap for previous -->
+    <View
+        android:id="@+id/leftTapArea"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_below="@id/topBar"
+        android:layout_above="@id/bottomNav"
+        android:layout_toLeftOf="@id/centerTapArea"
+        android:background="@android:color/transparent" />
+
+    <!-- Center area for story info -->
+    <LinearLayout
+        android:id="@+id/centerTapArea"
+        android:layout_width="200dp"
+        android:layout_height="match_parent"
+        android:layout_below="@id/topBar"
+        android:layout_above="@id/bottomNav"
+        android:layout_centerHorizontal="true"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@android:color/transparent" />
+
+    <!-- Right half - tap for next -->
+    <View
+        android:id="@+id/rightTapArea"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_below="@id/topBar"
+        android:layout_above="@id/bottomNav"
+        android:layout_toRightOf="@id/centerTapArea"
+        android:background="@android:color/transparent" />
+
+    <!-- Previous button (fixed position) -->
+    <ImageView
+        android:id="@+id/prevBtn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_below="@id/topBar"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="50dp"
+        android:src="@drawable/ic_arrow_left"
+        app:tint="@color/white"
+        android:scaleType="centerInside"
+        android:contentDescription="Previous Story"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:visibility="gone" />
+
+    <!-- Next button (fixed position) -->
+    <ImageView
+        android:id="@+id/nextBtn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_below="@id/topBar"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="50dp"
+        android:src="@drawable/ic_arrow_right"
+        app:tint="@color/white"
+        android:scaleType="centerInside"
+        android:contentDescription="Next Story"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:visibility="gone" />
+
+    <!-- Floating heart animation area -->
+    <LinearLayout
+        android:id="@+id/heartContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_below="@id/topBar"
+        android:layout_alignParentStart="true"
+        android:layout_above="@id/bottomNav"
+        android:layout_marginStart="18dp"
+        android:layout_marginBottom="80dp"
+        android:gravity="bottom">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="41dp"
+            android:layout_marginBottom="8dp"
+            android:src="@drawable/like1"
+            app:tint="@color/red"
+            android:contentDescription="Like count" />
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/like1"
+            app:tint="@android:color/holo_red_light"
+            android:contentDescription="Like heart" />
+    </LinearLayout>
+
+    <!-- Story timestamp -->
+    <TextView
+        android:id="@+id/storyTimestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/topBar"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="0dp"
+        android:layout_marginEnd="20dp"
+        android:text="2 hours ago"
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        android:fontFamily="@font/inder_regular" />
+
+    <!-- Bottom navigation bar -->
+    <LinearLayout
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@color/black"
+        android:layout_alignParentBottom="true"
+        android:padding="8dp">
+
+        <!-- Activity tab -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/activity"
+                app:tint="@color/white"
+                android:contentDescription="Activity" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Activity"
+                android:textColor="@color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Create tab -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/reels"
+                app:tint="@android:color/white"
+                android:contentDescription="Create" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Create"
+                android:textColor="@android:color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Facebook tab -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/share"
+                app:tint="@android:color/white"
+                android:contentDescription="Facebook" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Facebook"
+                android:textColor="@android:color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Highlight tab -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/like1"
+                app:tint="@android:color/white"
+                android:contentDescription="Highlight" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Highlight"
+                android:textColor="@android:color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- More tab -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_weight="1">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/options"
+                app:tint="@android:color/white"
+                android:contentDescription="More" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="More"
+                android:textColor="@android:color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>

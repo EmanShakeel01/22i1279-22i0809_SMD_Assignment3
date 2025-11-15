@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".inbox">
+
+    <!-- Status Bar Image -->
+
+    <!-- Top App Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/lighter_grey"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="1dp">
+
+        <ImageButton
+            android:id="@+id/back_arrow"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/arrow_right"
+            android:contentDescription="back"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="@null"
+            app:tint="@color/pink" />
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/avatarImage"
+            android:layout_width="40dp"
+            android:layout_marginLeft="8dp"
+            android:layout_height="40dp"
+            android:src="@drawable/mystory"
+            android:scaleType="centerCrop"
+            app:civ_border_width="2dp"
+            app:civ_border_color="@color/lightgrey" />
+
+        <TextView
+            android:id="@+id/chatName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="internshala"
+            android:fontFamily="@font/inder_regular"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginStart="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <!-- Call Buttons -->
+        <ImageView
+            android:id="@+id/call"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/call"
+            android:layout_marginEnd="12dp"
+            app:tint="@color/darkbrown" />
+
+        <ImageView
+            android:id="@+id/videoCallBtn"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/videocall"
+            android:layout_marginEnd="16dp"
+            app:tint="@color/darkbrown" />
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            app:tint="@color/darkbrown"
+            android:src="@drawable/options" />
+    </LinearLayout>
+
+    <!-- Chat Area -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentTop="true"
+            android:layout_above="@id/timestamp"
+            android:paddingBottom="70dp"
+            android:clipToPadding="false" />
+
+        <TextView
+            android:id="@+id/timestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="4:49 PM"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:layout_centerHorizontal="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginBottom="70dp" />
+
+        <TextView
+            android:id="@+id/exampleMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="12dp"
+            android:background="@color/lightpink"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:text="Hello"
+            android:fontFamily="@font/inder_regular"
+            android:textColor="@android:color/white"
+            android:visibility="gone" />
+    </RelativeLayout>
+
+    <!-- Bottom Input Bar -->
+    <LinearLayout
+        android:id="@+id/messageInputLayout"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="#F5E4E2"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:src="@drawable/camera1"
+            app:tint="@color/darkbrown" />
+
+        <EditText
+            android:id="@+id/messageInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Message..."
+            android:padding="8dp"
+            android:background="@android:color/white"
+            android:layout_marginHorizontal="16dp"
+            android:drawablePadding="8dp" />
+
+        <ImageView
+            android:id="@+id/micButton"
+            android:layout_width="21dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="8dp"
+            app:tint="@color/darkbrown"
+            android:src="@drawable/mic" />
+
+        <ImageView
+            android:id="@+id/photoButton"
+            android:layout_width="21dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="8dp"
+            app:tint="@color/darkbrown"
+            android:src="@drawable/photos" />
+
+        <ImageView
+            android:id="@+id/send"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            app:tint="@color/darkbrown"
+            android:src="@drawable/back2" />
+    </LinearLayout>
+</LinearLayout>

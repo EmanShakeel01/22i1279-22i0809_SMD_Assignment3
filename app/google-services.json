@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1048554319331",
+    "firebase_url": "https://i1279-22i0809-assignment2-default-rtdb.firebaseio.com",
+    "project_id": "i1279-22i0809-assignment2",
+    "storage_bucket": "i1279-22i0809-assignment2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1048554319331:android:9891af5ab0625045c244d6",
+        "android_client_info": {
+          "package_name": "com.FEdev.i221279_i220809"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRCCYUescJj_b_uzBMv2ZKYF-r4bTl5qk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

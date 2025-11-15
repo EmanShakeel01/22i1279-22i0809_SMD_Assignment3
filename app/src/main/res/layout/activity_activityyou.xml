@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".activityyou">
+
+
+
+    <!-- Top Tabs -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/tabFollowing"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Following"
+            android:textColor="@color/pink"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tabYou"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="You"
+            android:textColor="@color/pink"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- Scrollable Content -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <!-- Section Header: Follow Requests -->
+            <TextView
+                android:id="@+id/followRequestsHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Follow Requests"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/pink"
+                android:padding="8dp" />
+
+            <!-- Dynamic Follow Requests Container -->
+            <LinearLayout
+                android:id="@+id/followRequestsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <!-- Section Header: New -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="New"
+                android:textStyle="bold"
+                android:padding="8dp"
+                android:layout_marginTop="16dp" />
+
+            <!-- Example Item 1 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp">
+
+                <de.hdodenhof.circleimageview.CircleImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/mystory"
+                    app:civ_border_width="2dp"
+                    app:civ_border_color="@color/pink" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:text="karennne liked your photo. 1h"
+                    android:textSize="14sp" />
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/postsample"
+                    android:scaleType="centerCrop" />
+            </LinearLayout>
+
+            <!-- Section Header: Today -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Today"
+                android:textStyle="bold"
+                android:padding="8dp" />
+
+            <!-- Example Item 2 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp">
+
+                <de.hdodenhof.circleimageview.CircleImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/profile2"
+                    app:civ_border_width="2dp"
+                    app:civ_border_color="@color/pink" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:text="kiero_d, zackjohn and 26 others liked your photo. 3h"
+                    android:textSize="14sp" />
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/profile1"
+                    android:scaleType="centerCrop" />
+            </LinearLayout>
+
+            <!-- Section Header: This Week -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="This Week"
+                android:textStyle="bold"
+                android:padding="8dp" />
+
+            <!-- Example Item 3: Mention -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp">
+
+                <de.hdodenhof.circleimageview.CircleImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/profile7"
+                    app:civ_border_width="2dp"
+                    app:civ_border_color="@color/pink" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:text="craig_love mentioned you in a comment: @jacob_w exactly.. 2d"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- Example Item 4: Follow -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp">
+
+                <de.hdodenhof.circleimageview.CircleImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/profile9"
+                    app:civ_border_width="2dp"
+                    app:civ_border_color="@color/pink" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:text="martini_rond started following you. 3d"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:layout_width="100dp"
+                    android:layout_height="40dp"
+                    android:text="Message"
+                    android:textSize="12sp"
+                    android:backgroundTint="@color/pink"
+                    android:textColor="@android:color/white" />
+            </LinearLayout>
+
+            <!-- Example Item 5: Follow + Follow button -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp">
+
+                <de.hdodenhof.circleimageview.CircleImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/mystory"
+                    app:civ_border_width="2dp"
+                    app:civ_border_color="@color/pink" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:text="mis_potter started following you. 3d"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:layout_width="85dp"
+                    android:layout_height="40dp"
+                    android:text="Follow"
+                    android:textSize="12sp"
+                    android:backgroundTint="@color/pink"
+                    android:textColor="@android:color/white" />
+            </LinearLayout>
+
+            <!-- Section Header: This Month -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="This Month"
+                android:textStyle="bold"
+                android:padding="8dp" />
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Bottom Navigation -->
+    <LinearLayout
+        android:id="@+id/bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:orientation="horizontal"
+        android:background="@color/white"
+        android:gravity="center"
+        android:weightSum="5"
+        android:layout_alignParentBottom="true"
+        android:elevation="8dp">
+
+        <ImageView
+            android:id="@+id/nav_home"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:src="@drawable/home1"
+            android:scaleType="centerInside"
+            app:tint="@color/darkbrown"
+            android:padding="10dp" />
+
+        <ImageView
+            android:id="@+id/nav_search"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:src="@drawable/search"
+            android:scaleType="centerInside"
+            app:tint="@color/darkbrown"
+            android:padding="10dp" />
+
+        <ImageView
+            android:id="@+id/add"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="10dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/add"
+            app:tint="@color/darkbrown" />
+
+        <ImageView
+            android:id="@+id/nav_like"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:src="@drawable/like1"
+            android:scaleType="centerInside"
+            app:tint="@color/darkbrown"
+            android:padding="6dp" />
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/nav_profile"
+            android:layout_width="0dp"
+            android:layout_height="35dp"
+            android:layout_weight="1"
+            android:src="@drawable/mystory"
+            app:civ_border_width="2dp"
+            app:civ_border_color="@color/pink"
+            android:scaleType="centerCrop" />
+    </LinearLayout>
+
+</LinearLayout>

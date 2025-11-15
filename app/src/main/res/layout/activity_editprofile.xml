@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    tools:context=".editprofile">
+
+
+    <!-- Top Bar -->
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingVertical="10dp">
+
+        <TextView
+            android:id="@+id/cancelText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginStart="16dp"
+            android:textColor="@color/darkbrown"
+            android:layout_alignParentStart="true" />
+
+        <TextView
+            android:id="@+id/screenTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Edit Profile"
+            android:textStyle="bold"
+            android:textSize="18sp"
+
+            android:layout_centerInParent="true" />
+
+        <TextView
+            android:id="@+id/doneText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Done"
+            android:layout_marginEnd="16dp"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/darkbrown"
+            android:layout_alignParentEnd="true" />
+    </RelativeLayout>
+
+    <!-- Profile Photo -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginTop="16dp">
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/profilePhoto"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/postsample"
+            android:layout_gravity="center"
+            android:scaleType="centerCrop"
+            app:civ_border_width="2dp"
+            app:civ_border_color="@android:color/white" />
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Change Profile Photo"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/pink"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+
+    <!-- Editable Fields -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="24dp">
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Name"
+            android:text="Jacob West"
+            android:background="@null"
+            android:padding="10dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0" />
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Username"
+            android:text="jacob_w"
+            android:background="@null"
+            android:padding="10dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0" />
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Website"
+            android:background="@null"
+            android:padding="10dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E0E0" />
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Bio"
+            android:text="Digital goodies designer @pixsellz. Everything is designed."
+            android:background="@null"
+            android:padding="10dp" />
+    </LinearLayout>
+
+    <!-- Switch to Professional -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Switch to Professional Account"
+        android:textColor="@color/pink"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp"
+        android:layout_gravity="start" />
+
+
+    <!-- Private Information -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Private Information"
+        android:textSize="14sp"
+        android:layout_gravity="start"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Email"
+        android:text="jacob.west@gmail.com"
+        android:background="@null"
+        android:padding="10dp" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Phone"
+        android:text="+1 202 555 0147"
+        android:background="@null"
+        android:padding="10dp" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Gender"
+        android:text="Male"
+        android:background="@null"
+        android:padding="10dp" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingBottom="8dp">
+
+
+    </RelativeLayout>
+</LinearLayout>
+

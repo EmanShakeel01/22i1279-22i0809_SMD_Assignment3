@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/white"
+    tools:context=".Login1">
+
+
+    <ImageView
+        android:id="@+id/back"
+        android:layout_width="30dp"
+        android:layout_height="15dp"
+        android:layout_gravity="start"
+        android:src="@drawable/back"
+        app:tint="@android:color/black" />
+
+    <!-- Center Content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp">
+
+
+
+
+
+        <!-- App Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Socially"
+            android:textSize="50sp"
+            android:textColor="@color/darkbrown"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-light"
+            android:layout_marginBottom="60dp" />
+
+        <!-- Profile Picture -->
+        <ImageView
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_marginBottom="16dp"
+            android:src="@drawable/profile1"
+            android:scaleType="centerCrop"
+            android:background="@drawable/circle" />
+
+        <!-- Username -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="jacob_w"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="@color/black"
+            android:layout_marginBottom="32dp" />
+
+        <!-- Login Button -->
+
+
+        <Button
+            android:id="@+id/login"
+            android:layout_width="280dp"
+            android:layout_height="50dp"
+            android:text="Log in"
+            android:enabled="true"
+            android:layout_gravity="center"
+            android:textSize="16sp"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/darkbrown"
+        />
+
+
+        <!-- Switch Accounts -->
+        <TextView
+            android:id="@+id/switchacc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Switch accounts"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/darkbrown"
+            android:layout_marginBottom="40dp" />
+
+        <!-- Sign Up Link -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Don't have an account? "
+                android:textSize="14sp"
+                android:layout_marginTop="100dp"
+                android:textColor="@color/pink" />
+
+            <TextView
+                android:id="@+id/signup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sign up."
+                android:textSize="14sp"
+                android:layout_marginTop="100dp"
+                android:textColor="@color/darkbrown"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Bottom Section -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginBottom="16dp">
+
+
+
+    </RelativeLayout>
+
+</LinearLayout>

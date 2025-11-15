@@ -1,0 +1,55 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="4dp"
+    android:gravity="start">
+
+    <!-- User Avatar -->
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/senderAvatar"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/mystory"
+        android:scaleType="centerCrop"
+        app:civ_border_width="1dp"
+        app:civ_border_color="@color/lightgrey"
+        android:layout_marginEnd="8dp" />
+
+    <LinearLayout
+        android:id="@+id/messageContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxWidth="280dp"
+        android:orientation="vertical"
+        android:background="@drawable/message_received_background"
+        android:padding="10dp">
+
+        <!-- Text Message -->
+        <TextView
+            android:id="@+id/messageText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@android:color/black"
+            android:visibility="gone" />
+
+        <!-- Image Message -->
+        <ImageView
+            android:id="@+id/messageImage"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <!-- Timestamp -->
+        <TextView
+            android:id="@+id/messageTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="10sp"
+            android:textColor="@color/lightgrey" />
+    </LinearLayout>
+</LinearLayout>

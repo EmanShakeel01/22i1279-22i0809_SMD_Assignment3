@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <!-- Profile Picture -->
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/commentUserProfile"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/mystory"
+        android:layout_marginEnd="12dp" />
+
+    <!-- Comment Content -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Username and Comment -->
+        <TextView
+            android:id="@+id/commentText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:lineSpacingExtra="2dp" />
+
+        <!-- Time and Actions -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/commentTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2h"
+                android:textSize="12sp"
+                android:textColor="#999999" />
+
+            <TextView
+                android:id="@+id/commentLikes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="5 likes"
+                android:textSize="12sp"
+                android:textColor="#999999"
+                android:layout_marginStart="16dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/replyButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reply"
+                android:textSize="12sp"
+                android:textColor="#999999"
+                android:textStyle="bold"
+                android:layout_marginStart="16dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Like Button -->
+    <ImageView
+        android:id="@+id/commentLikeBtn"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:src="@drawable/like"
+        android:contentDescription="Like"
+        android:layout_marginStart="8dp"
+        android:layout_gravity="center_vertical" />
+
+</LinearLayout>
