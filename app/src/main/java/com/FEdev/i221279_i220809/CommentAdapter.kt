@@ -1,6 +1,5 @@
 package com.FEdev.i221279_i220809
 
-import Comment
 import android.graphics.Typeface
 import android.text.SpannableString
 import android.text.Spanned
@@ -11,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.FEdev.i221279_i220809.models.Comment
 import de.hdodenhof.circleimageview.CircleImageView
 
 class CommentAdapter(private val commentList: ArrayList<Comment>) :
@@ -36,8 +36,8 @@ class CommentAdapter(private val commentList: ArrayList<Comment>) :
         // Profile picture placeholder
         holder.userProfile.setImageResource(R.drawable.mystory)
 
-        // Bold username
-        val formattedText = SpannableString("${comment.username} ${comment.text}")
+        // Bold username with comment text
+        val formattedText = SpannableString("${comment.username} ${comment.comment_text}")
         formattedText.setSpan(
             StyleSpan(Typeface.BOLD),
             0,
@@ -46,12 +46,16 @@ class CommentAdapter(private val commentList: ArrayList<Comment>) :
         )
         holder.commentText.text = formattedText
 
-        // Time
+        // Time ago
         holder.commentTime.text = getTimeAgo(comment.timestamp.toLongOrNull() ?: 0L)
 
-        // Like & reply placeholders
-        holder.likeButton.setOnClickListener { /* future implementation */ }
-        holder.replyButton.setOnClickListener { /* future implementation */ }
+        // Like & reply buttons (placeholder for future implementation)
+        holder.likeButton.setOnClickListener {
+            // TODO: Implement comment likes
+        }
+        holder.replyButton.setOnClickListener {
+            // TODO: Implement comment replies
+        }
     }
 
     override fun getItemCount(): Int = commentList.size

@@ -1,6 +1,5 @@
 package com.FEdev.i221279_i220809
 
-import Post
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -12,19 +11,24 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.FEdev.i221279_i220809.models.GetPostsRequest
+import com.FEdev.i221279_i220809.models.Post
+import com.FEdev.i221279_i220809.network.RetrofitClient
+import com.FEdev.i221279_i220809.utils.SessionManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import de.hdodenhof.circleimageview.CircleImageView
+import kotlinx.coroutines.launch
 
 class homepage : AppCompatActivity() {
 
+    private lateinit var sessionManager: SessionManager
     private lateinit var postRecyclerView: RecyclerView
     private lateinit var postList: ArrayList<Post>
-    private lateinit var dbRef: DatabaseReference
     private lateinit var postAdapter: PostAdapter
-    private var valueEventListener: ValueEventListener? = null
     private var storyUsersData: MutableList<Pair<String, String>> = mutableListOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +36,8 @@ class homepage : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_homepage)
         Log.d("ActivityStack", "HomePage onCreate")
+
+        sessionManager = SessionManager(this)
         OnlineStatusManager.initializeStatus()
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -41,10 +47,25 @@ class homepage : AppCompatActivity() {
         }
 
         // ------------------- NAVIGATION BUTTONS -------------------
+        setupNavigation()
+
+        // ------------------- STORY SECTION (Firebase) -------------------
+        setupMyStoryClick()
+        loadStoryUsers()
+
+        // ------------------- POSTS FEED (Web Service) -------------------
+        setupPostsRecyclerView()
+        loadPostsFromWebService()
+
+        // ------------------- INCOMING CALL LISTENER (Firebase) -------------------
+        listenForIncomingCalls()
+    }
+
+    private fun setupNavigation() {
         val homeNav = findViewById<ImageView>(R.id.nav_home)
         homeNav.setOnClickListener {
-            startActivity(Intent(this, homepage::class.java))
-            finish()
+            // Already on home, just reload
+            recreate()
         }
 
         val likeNav = findViewById<ImageView>(R.id.nav_like)
@@ -88,28 +109,9 @@ class homepage : AppCompatActivity() {
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             startActivity(intent)
         }
-
-        // ------------------- STORY SECTION -------------------
-        setupMyStoryClick()
-        loadStoryUsers()
-
-        // ------------------- POSTS FEED (Firebase) -------------------
-        postRecyclerView = findViewById(R.id.postRecyclerView)
-        postRecyclerView.layoutManager = LinearLayoutManager(this)
-        postRecyclerView.setHasFixedSize(false)
-
-        postList = arrayListOf()
-        postAdapter = PostAdapter(postList)
-        postRecyclerView.adapter = postAdapter
-
-        dbRef = FirebaseDatabase.getInstance().getReference("Posts")
-        loadPostsFromFirebase()
-
-        // ------------------- INCOMING CALL LISTENER -------------------
-        listenForIncomingCalls()
     }
 
-    // ------------------- STORY HANDLING -------------------
+    // ------------------- STORY HANDLING (Firebase) -------------------
     private fun setupMyStoryClick() {
         val myStory = findViewById<CircleImageView>(R.id.story1)
         val addStoryBtn = findViewById<ImageView>(R.id.add_story)
@@ -228,33 +230,60 @@ class homepage : AppCompatActivity() {
         }
     }
 
-    // ------------------- POSTS HANDLING -------------------
-    private fun loadPostsFromFirebase() {
-        valueEventListener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                postList.clear()
-                if (snapshot.exists()) {
-                    for (postSnap in snapshot.children) {
-                        val post = postSnap.getValue(Post::class.java)
-                        post?.let {
-                            postList.add(it)
-                            Log.d("PostLoading", "Post loaded: ${it.username}")
-                        }
-                    }
-                    postList.reverse()
-                    Log.d("PostLoading", "TOTAL POSTS: ${postList.size}")
-                    postAdapter.notifyDataSetChanged()
-                }
-            }
+    // ------------------- POSTS HANDLING (Web Service) -------------------
+    private fun setupPostsRecyclerView() {
+        postRecyclerView = findViewById(R.id.postRecyclerView)
+        postRecyclerView.layoutManager = LinearLayoutManager(this)
+        postRecyclerView.setHasFixedSize(false)
 
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Error: ${error.message}")
-            }
-        }
-        dbRef.addValueEventListener(valueEventListener!!)
+        postList = arrayListOf()
+        postAdapter = PostAdapter(postList, sessionManager)
+        postRecyclerView.adapter = postAdapter
     }
 
-    // ------------------- INCOMING CALL LISTENER -------------------
+    private fun loadPostsFromWebService() {
+        val authToken = sessionManager.getAuthToken()
+
+        if (authToken == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val request = GetPostsRequest(auth_token = authToken)
+                val response = RetrofitClient.apiService.getPosts(request)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+
+                    if (data != null) {
+                        postList.clear()
+                        postList.addAll(data.posts)
+                        postAdapter.notifyDataSetChanged()
+
+                        Log.d("HomePage", "✅ Loaded ${data.total} posts from web service")
+                    }
+                } else {
+                    Log.e("HomePage", "❌ Failed to load posts: ${response.body()?.message}")
+                    Toast.makeText(
+                        this@homepage,
+                        response.body()?.message ?: "Failed to load posts",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Log.e("HomePage", "❌ Error loading posts: ${e.message}", e)
+                Toast.makeText(
+                    this@homepage,
+                    "Network error: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    // ------------------- INCOMING CALL LISTENER (Firebase) -------------------
     private fun listenForIncomingCalls() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val callsRef = FirebaseDatabase.getInstance().getReference("calls")
@@ -287,10 +316,15 @@ class homepage : AppCompatActivity() {
         })
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Refresh posts when returning to homepage
+        loadPostsFromWebService()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         Log.d("ActivityStack", "HomePage onDestroy")
-        valueEventListener?.let { dbRef.removeEventListener(it) }
         OnlineStatusManager.cleanup()
     }
 }

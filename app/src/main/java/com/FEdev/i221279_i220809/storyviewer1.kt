@@ -8,27 +8,25 @@ import android.util.Log
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import androidx.lifecycle.lifecycleScope
+import com.FEdev.i221279_i220809.network.RetrofitClient
+import com.FEdev.i221279_i220809.models.StoryUploadRequest
+import com.FEdev.i221279_i220809.utils.SessionManager
+import kotlinx.coroutines.launch
 
 class storyviewer1 : AppCompatActivity() {
 
-    private lateinit var auth: FirebaseAuth
-    private val db = FirebaseDatabase.getInstance().getReference("Stories")
-
-    private var base64Image: String? = null  // ✅ store image for upload when button pressed
+    private lateinit var sessionManager: SessionManager
+    private var base64Image: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_storyviewer1)
-        Log.d("ActivityStack", "Storyviewer1 onCreate")
 
-        auth = FirebaseAuth.getInstance()
+        Log.d("StoryViewer1", "onCreate")
+
+        sessionManager = SessionManager(this)
 
         val nextBtn = findViewById<ImageButton>(R.id.nextBtn)
         val backBtn = findViewById<ImageView>(R.id.back)
@@ -36,7 +34,7 @@ class storyviewer1 : AppCompatActivity() {
 
         base64Image = intent.getStringExtra("imageBase64")
 
-        // ✅ Show story preview only (no upload yet)
+        // Show story preview
         if (base64Image != null) {
             try {
                 val imageBytes = Base64.decode(base64Image, Base64.DEFAULT)
@@ -54,110 +52,70 @@ class storyviewer1 : AppCompatActivity() {
             Toast.makeText(this, "No image data found", Toast.LENGTH_SHORT).show()
         }
 
-        // ✅ Upload story only when "Next" button is clicked
+        // Upload story when "Next" button is clicked
         nextBtn.setOnClickListener {
             if (base64Image != null) {
-                uploadStoryToFirebase(base64Image!!)
+                uploadStoryToServer(base64Image!!)
             } else {
                 Toast.makeText(this, "No image to upload", Toast.LENGTH_SHORT).show()
             }
         }
 
-        // ✅ Back button - go back to takepicture activity
+        // Back button
         backBtn.setOnClickListener {
-            val intent = Intent(this, takepicture::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
             finish()
         }
-
-        // Optional: Adjust padding for edge-to-edge layout
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
     }
 
-    // ✅ Upload story to Firebase
-    // ✅ Upload story to Firebase with correct username
-    // ✅ Upload story to Firebase - fetch username by searching for UID
-    private fun uploadStoryToFirebase(base64Image: String) {
-        val userId = auth.currentUser?.uid ?: return
-        val storyId = db.child(userId).push().key ?: return
-        val timestamp = System.currentTimeMillis()
-        val expiresAt = timestamp + 24 * 60 * 60 * 1000 // 24 hours
+    private fun uploadStoryToServer(base64Image: String) {
+        val authToken = sessionManager.getAuthToken()
 
-        val usersRef = FirebaseDatabase.getInstance().getReference("users")
+        if (authToken == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-        // ✅ Query all users to find the one with matching UID
-        usersRef.get().addOnSuccessListener { snapshot ->
-            var username = "User"
+        // Show loading
+        Toast.makeText(this, "Uploading story...", Toast.LENGTH_SHORT).show()
 
-            // Search through all users to find the one with our UID
-            for (userSnap in snapshot.children) {
-                val uid = userSnap.child("uid").getValue(String::class.java)
-                if (uid == userId) {
-                    username = userSnap.child("username").getValue(String::class.java) ?: "User"
-                    Log.d("Firebase", "Found username: $username")
-                    break
+        lifecycleScope.launch {
+            try {
+                val request = StoryUploadRequest(
+                    auth_token = authToken,
+                    image_base64 = base64Image
+                )
+
+                val response = RetrofitClient.apiService.uploadStory(request)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    Log.d("StoryViewer1", "✅ Story uploaded successfully")
+                    Toast.makeText(
+                        this@storyviewer1,
+                        "Story posted!",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    // Go to homepage
+                    val intent = Intent(this@storyviewer1, homepage::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    startActivity(intent)
+                    finish()
+                } else {
+                    Log.e("StoryViewer1", "❌ Upload failed: ${response.body()?.message}")
+                    Toast.makeText(
+                        this@storyviewer1,
+                        response.body()?.message ?: "Failed to upload story",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
+            } catch (e: Exception) {
+                Log.e("StoryViewer1", "❌ Error: ${e.message}", e)
+                Toast.makeText(
+                    this@storyviewer1,
+                    "Network error: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
-
-            val storyData = mapOf(
-                "imageBase64" to base64Image,
-                "timestamp" to timestamp,
-                "expiresAt" to expiresAt,
-                "uploadedBy" to userId,
-                "username" to username
-            )
-
-            db.child(userId).child(storyId).setValue(storyData)
-                .addOnSuccessListener {
-                    Log.d("Firebase", "Story uploaded successfully with username: $username ✅")
-                    Toast.makeText(this, "Story posted!", Toast.LENGTH_SHORT).show()
-
-                    // ✅ Go to homepage after upload
-                    val intent = Intent(this, homepage::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    startActivity(intent)
-                    finish()
-                }
-                .addOnFailureListener { e ->
-                    Log.e("Firebase", "Failed to upload story ❌", e)
-                    Toast.makeText(this, "Failed to upload story", Toast.LENGTH_SHORT).show()
-                }
-
-        }.addOnFailureListener { e ->
-            Log.e("Firebase", "Failed to fetch users ❌", e)
-
-            // Fallback with default username
-            val storyData = mapOf(
-                "imageBase64" to base64Image,
-                "timestamp" to timestamp,
-                "expiresAt" to expiresAt,
-                "uploadedBy" to userId,
-                "username" to "User"
-            )
-
-            db.child(userId).child(storyId).setValue(storyData)
-                .addOnSuccessListener {
-                    Log.d("Firebase", "Story uploaded with default username ✅")
-                    Toast.makeText(this, "Story posted!", Toast.LENGTH_SHORT).show()
-
-                    val intent = Intent(this, homepage::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    startActivity(intent)
-                    finish()
-                }
-                .addOnFailureListener { e ->
-                    Log.e("Firebase", "Failed to upload story ❌", e)
-                    Toast.makeText(this, "Failed to upload story", Toast.LENGTH_SHORT).show()
-                }
         }
-    }
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d("ActivityStack", "Storyviewer1 onDestroy")
     }
 }

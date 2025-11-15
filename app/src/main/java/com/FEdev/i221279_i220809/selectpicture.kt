@@ -1,6 +1,5 @@
 package com.FEdev.i221279_i220809
 
-import Post
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
@@ -16,11 +15,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import com.FEdev.i221279_i220809.models.PostUploadRequest
+import com.FEdev.i221279_i220809.network.RetrofitClient
+import com.FEdev.i221279_i220809.utils.SessionManager
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.util.UUID
@@ -29,6 +30,7 @@ class selectpicture : AppCompatActivity() {
 
     private var imageUri: Uri? = null
     private lateinit var selectedImage: ImageView
+    private lateinit var sessionManager: SessionManager
     private var isStory: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +38,8 @@ class selectpicture : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_selectpicture)
         Log.d("ActivityStack", "selectpicture onCreate")
+
+        sessionManager = SessionManager(this)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -60,7 +64,7 @@ class selectpicture : AppCompatActivity() {
                 if (isStory) {
                     saveStoryToFirebase(imageUri!!)
                 } else {
-                    savePostToFirebase(imageUri!!)
+                    savePostToWebService(imageUri!!)
                 }
             } else {
                 Toast.makeText(this, "Please select an image first", Toast.LENGTH_SHORT).show()
@@ -80,66 +84,83 @@ class selectpicture : AppCompatActivity() {
         }
     }
 
-    // ✅ Function for uploading POSTS under logged-in user
-    private fun savePostToFirebase(uri: Uri) {
-        val user = FirebaseAuth.getInstance().currentUser
-        if (user == null) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+    // ✅ Function for uploading POSTS via Web Service
+    private fun savePostToWebService(uri: Uri) {
+        val authToken = sessionManager.getAuthToken()
+
+        if (authToken == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val safeEmail = user.email!!.replace(".", ",")
-        val userRef = FirebaseDatabase.getInstance().getReference("users").child(safeEmail)
+        try {
+            // Convert image to base64
+            val inputStream = contentResolver.openInputStream(uri)
+            val bitmap = BitmapFactory.decodeStream(inputStream)
 
-        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val username = snapshot.child("username").getValue(String::class.java) ?: "Anonymous"
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+            val imageBytes = outputStream.toByteArray()
+            val base64Image = Base64.encodeToString(imageBytes, Base64.DEFAULT)
 
-                Log.d("FirebaseDebug", "✅ Username fetched: $username")
+            Log.d("PostUpload", "Image size: ${imageBytes.size} bytes")
 
+            // Show loading
+            Toast.makeText(this, "Uploading post...", Toast.LENGTH_SHORT).show()
+
+            // Upload to web service
+            lifecycleScope.launch {
                 try {
-                    val inputStream = contentResolver.openInputStream(uri)
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
-
-                    val outputStream = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-                    val imageBytes = outputStream.toByteArray()
-                    val base64Image = Base64.encodeToString(imageBytes, Base64.DEFAULT)
-
-                    val dbRef = FirebaseDatabase.getInstance().getReference("Posts")
-                    val postId = dbRef.push().key ?: UUID.randomUUID().toString()
-
-                    val post = mapOf(
-                        "postId" to postId,
-                        "userId" to user.uid,
-                        "username" to username,
-                        "imageUrl" to base64Image,
-                        "caption" to "Shared via Socially!",
-                        "timestamp" to System.currentTimeMillis()
+                    val request = PostUploadRequest(
+                        auth_token = authToken,
+                        image_base64 = base64Image,
+                        caption = "Shared via Socially!"
                     )
 
-                    dbRef.child(postId).setValue(post)
-                        .addOnSuccessListener {
-                            Toast.makeText(this@selectpicture, "✅ Post uploaded successfully!", Toast.LENGTH_SHORT).show()
-                            finish()
-                        }
-                        .addOnFailureListener {
-                            Toast.makeText(this@selectpicture, "❌ Database error: ${it.message}", Toast.LENGTH_SHORT).show()
-                        }
+                    Log.d("PostUpload", "Sending request to server...")
+                    val response = RetrofitClient.apiService.uploadPost(request)
 
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        val data = response.body()?.data
+                        Log.d("PostUpload", "✅ Post uploaded successfully! Post ID: ${data?.post_id}")
+
+                        Toast.makeText(
+                            this@selectpicture,
+                            "Post created successfully!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        // Go to homepage
+                        val intent = Intent(this@selectpicture, homepage::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        Log.e("PostUpload", "❌ Upload failed: ${response.body()?.message}")
+                        Toast.makeText(
+                            this@selectpicture,
+                            response.body()?.message ?: "Failed to upload post",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 } catch (e: Exception) {
-                    e.printStackTrace()
-                    Toast.makeText(this@selectpicture, "Failed to save post: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Log.e("PostUpload", "❌ Error: ${e.message}", e)
+                    Toast.makeText(
+                        this@selectpicture,
+                        "Network error: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
 
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@selectpicture, "Failed to load user: ${error.message}", Toast.LENGTH_SHORT).show()
-            }
-        })
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Log.e("PostUpload", "Failed to process image: ${e.message}")
+            Toast.makeText(this, "Failed to process image: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    // ✅ Function for uploading STORIES under logged-in user
+    // ✅ Function for uploading STORIES to Firebase (unchanged)
     private fun saveStoryToFirebase(uri: Uri) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
@@ -152,7 +173,7 @@ class selectpicture : AppCompatActivity() {
             val bitmap = BitmapFactory.decodeStream(inputStream)
 
             val outputStream = ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
             val imageBytes = outputStream.toByteArray()
             val base64Image = Base64.encodeToString(imageBytes, Base64.DEFAULT)
 
@@ -170,12 +191,15 @@ class selectpicture : AppCompatActivity() {
                 "expiresAt" to expiresAt
             )
 
+            Toast.makeText(this, "Uploading story...", Toast.LENGTH_SHORT).show()
+
             dbRef.child(storyId).setValue(storyData)
                 .addOnSuccessListener {
                     Toast.makeText(this, "✅ Story uploaded!", Toast.LENGTH_SHORT).show()
 
                     // Open viewer for this story
                     val intent = Intent(this, storyviewer2::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     startActivity(intent)
                     finish()
                 }

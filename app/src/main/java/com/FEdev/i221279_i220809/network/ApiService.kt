@@ -18,4 +18,30 @@ interface ApiService {
 
     @POST("logout.php")
     suspend fun logout(@Body request: SessionRequest): Response<ApiResponse<Any>>
+
+    @POST("upload_story.php")
+    suspend fun uploadStory(@Body request: StoryUploadRequest): Response<ApiResponse<StoryUploadResponse>>
+
+    @POST("get_my_stories.php")
+    suspend fun getMyStories(@Body request: MyStoriesRequest): Response<ApiResponse<MyStoriesResponse>>
+
+    @POST("get_user_stories.php")
+    suspend fun getUserStories(@Body request: UserStoriesRequest): Response<ApiResponse<UserStoriesResponse>>
+
+    @POST("get_all_stories.php")
+    suspend fun getAllStories(@Body request: AllStoriesRequest): Response<ApiResponse<AllStoriesResponse>>
+    @POST("upload_post.php")
+    suspend fun uploadPost(@Body request: PostUploadRequest): Response<ApiResponse<PostUploadResponse>>
+
+    @POST("get_posts.php")
+    suspend fun getPosts(@Body request: GetPostsRequest): Response<ApiResponse<GetPostsResponse>>
+
+    @POST("toggle_like.php")
+    suspend fun toggleLike(@Body request: ToggleLikeRequest): Response<ApiResponse<ToggleLikeResponse>>
+
+    @POST("add_comment.php")
+    suspend fun addComment(@Body request: AddCommentRequest): Response<ApiResponse<AddCommentResponse>>
+
+    @POST("get_comments.php")
+    suspend fun getComments(@Body request: GetCommentsRequest): Response<ApiResponse<GetCommentsResponse>>
 }

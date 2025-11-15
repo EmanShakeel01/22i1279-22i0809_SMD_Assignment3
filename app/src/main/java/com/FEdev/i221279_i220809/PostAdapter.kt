@@ -1,10 +1,5 @@
-
-
-
 package com.FEdev.i221279_i220809
 
-import Post
-import android.app.Activity
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -16,14 +11,20 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.FEdev.i221279_i220809.models.Post
+import com.FEdev.i221279_i220809.models.ToggleLikeRequest
+import com.FEdev.i221279_i220809.network.RetrofitClient
+import com.FEdev.i221279_i220809.utils.SessionManager
 import de.hdodenhof.circleimageview.CircleImageView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class PostAdapter(private val postList: ArrayList<Post>) :
-    RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
-
-    private val listeners = mutableMapOf<String, ValueEventListener>()
+class PostAdapter(
+    private val postList: ArrayList<Post>,
+    private val sessionManager: SessionManager
+) : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
 
     class PostViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val username: TextView = itemView.findViewById(R.id.username)
@@ -43,226 +44,135 @@ class PostAdapter(private val postList: ArrayList<Post>) :
 
     override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
         val post = postList[position]
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
-        // Check if user can view this post
-//        val postUserId = post.userId // You need to add userId field to Post data class
-//        if (postUserId != currentUserId) {
-//            FollowRequestManager.checkIfFollowing(currentUserId!!, postUserId) { isFollowing ->
-//                ( holder.itemView.context as? Activity)?.runOnUiThread {
-//                if (!isFollowing) {
-//                        // Hide post if not following
-//                        holder.itemView.visibility = View.GONE
-//                        holder.itemView.layoutParams = RecyclerView.LayoutParams(0, 0)
-//                        return@runOnUiThread
-//                    } else {
-//                        holder.itemView.visibility = View.VISIBLE
-//                        holder.itemView.layoutParams = RecyclerView.LayoutParams(
-//                            ViewGroup.LayoutParams.MATCH_PARENT,
-//                            ViewGroup.LayoutParams.WRAP_CONTENT
-//                        )
-//                    }
-//                }
-//            }
-//        }
+        val context = holder.itemView.context
 
-
-
-        Log.d("PostAdapter", "=== BIND DEBUG ===")
-        Log.d("PostAdapter", "Current User ID: $currentUserId")
-        Log.d("PostAdapter", "Current User Email: ${FirebaseAuth.getInstance().currentUser?.email}")
-        Log.d("PostAdapter", "Post ID: ${post.postId}")
-
-        val postRef = FirebaseDatabase.getInstance().getReference("posts").child(post.postId)
-        val likesRef = postRef.child("likes")
-
-        // --- Username & Caption ---
+        // Set username and caption
         holder.username.text = post.username
         holder.caption.text = "${post.username}  ${post.caption}"
 
-        // --- Decode Base64 Image ---
+        // Decode and display image
         try {
-            val imageBytes = Base64.decode(post.imageUrl, Base64.DEFAULT)
+            val imageBytes = Base64.decode(post.image_base64, Base64.DEFAULT)
             val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-            holder.postImage.setImageBitmap(bitmap)
+            if (bitmap != null) {
+                holder.postImage.setImageBitmap(bitmap)
+            } else {
+                holder.postImage.setImageResource(R.drawable.postsample)
+            }
         } catch (e: Exception) {
+            Log.e("PostAdapter", "Error decoding image: ${e.message}")
             holder.postImage.setImageResource(R.drawable.postsample)
         }
 
-        // --- Placeholder Profile Picture ---
+        // Profile picture placeholder
         holder.profilePic.setImageResource(R.drawable.mystory)
 
-        // Remove old listener if exists to prevent duplicates
-        listeners[post.postId]?.let { oldListener ->
-            likesRef.removeEventListener(oldListener)
-            listeners.remove(post.postId)
-        }
+        // Update like button and text
+        updateLikeUI(holder, post)
 
-        // --- Real-time Like Updates ---
-        val likeListener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val likeCount = snapshot.childrenCount.toInt()
-                val liked = currentUserId != null && snapshot.hasChild(currentUserId)
-
-                Log.d("PostAdapter", "Post ${post.postId}: likeCount=$likeCount, liked=$liked, userId=$currentUserId")
-
-                // Update UI
-                holder.btnLike.setImageResource(
-                    if (liked) R.drawable.filledheart else R.drawable.like
-                )
-                holder.likesText.text =
-                    if (likeCount == 0) "Be the first to like"
-                    else if (likeCount == 1) "Liked by 1 user"
-                    else "Liked by $likeCount users"
-
-                // Update local map
-                post.likes.clear()
-                for (child in snapshot.children) {
-                    post.likes[child.key!!] = true
-                }
-
-                Log.d("PostAdapter", "Updated likes map for ${post.postId}: ${post.likes.keys}")
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("PostAdapter", "Failed to read likes: ${error.message}")
-            }
-        }
-
+        // Like button click
         holder.btnLike.setOnClickListener {
-            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return@setOnClickListener
-            val postId = post.postId
-            val postOwnerId = post.userId
-
-            // Reference to likes node
-            val likesRef = FirebaseDatabase.getInstance()
-                .getReference("posts")
-                .child(postId)
-                .child("likes")
-                .child(currentUserId)
-
-            likesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        // Unlike
-                        likesRef.removeValue()
-                            .addOnSuccessListener {
-                                // Update UI
-                                holder.btnLike.setImageResource(R.drawable.like)
-                            }
-                    } else {
-                        // Like
-                        likesRef.setValue(true)
-                            .addOnSuccessListener {
-                                // Update UI
-                                holder.btnLike.setImageResource(R.drawable.like)
-
-                                // ✅ Send notification to post owner
-                                if (currentUserId != postOwnerId) {
-                                    getUsernameAndNotify(currentUserId, postOwnerId, postId)
-                                }
-                            }
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("PostAdapter", "Error: ${error.message}")
-                }
-            })
+            toggleLike(holder, post, position)
         }
 
-        likesRef.addValueEventListener(likeListener)
-        listeners[post.postId] = likeListener
-
-        // --- Like Button Click ---
-        holder.btnLike.setOnClickListener {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid
-
-            Log.d("PostAdapter", "=== CLICK DEBUG ===")
-            Log.d("PostAdapter", "Current User ID: $uid")
-            Log.d("PostAdapter", "Current User Email: ${FirebaseAuth.getInstance().currentUser?.email}")
-
-            if (uid == null) {
-                Log.e("PostAdapter", "ERROR: User is not logged in!")
-                Toast.makeText(holder.itemView.context, "Please login first", Toast.LENGTH_LONG).show()
-                return@setOnClickListener
-
-            }
-
-            Log.d("PostAdapter", "Like button clicked. Post: ${post.postId}, User: $uid")
-            Log.d("PostAdapter", "Current likes before action: ${post.likes.keys}")
-
-            val isLiked = post.likes.containsKey(uid)
-            Log.d("PostAdapter", "Is currently liked: $isLiked")
-
-            if (isLiked) {
-                // Unlike
-                Log.d("PostAdapter", "Removing like from Firebase")
-                likesRef.child(uid).removeValue()
-                    .addOnSuccessListener {
-                        Log.d("PostAdapter", "Successfully removed like")
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("PostAdapter", "Failed to remove like: ${e.message}")
-                    }
-                Toast.makeText(holder.itemView.context, "Unliked 💔", Toast.LENGTH_SHORT).show()
-            } else {
-                // Like
-                Log.d("PostAdapter", "Adding like to Firebase")
-                likesRef.child(uid).setValue(true)
-                    .addOnSuccessListener {
-                        Log.d("PostAdapter", "Successfully added like")
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("PostAdapter", "Failed to add like: ${e.message}")
-                    }
-                Toast.makeText(holder.itemView.context, "Liked ❤️", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        // --- Comment Button Click ---
+        // Comment button click
         holder.btnComment.setOnClickListener {
-            val context = holder.itemView.context
             val intent = Intent(context, CommentsActivity::class.java)
-            intent.putExtra("postId", post.postId)
+            intent.putExtra("postId", post.post_id)
             context.startActivity(intent)
         }
     }
 
     override fun getItemCount(): Int = postList.size
 
-    // Clean up listeners when adapter is destroyed
-    fun cleanup() {
-        listeners.forEach { (postId, listener) ->
-            FirebaseDatabase.getInstance()
-                .getReference("posts")
-                .child(postId)
-                .child("likes")
-                .removeEventListener(listener)
+    private fun updateLikeUI(holder: PostViewHolder, post: Post) {
+        // Update like icon
+        holder.btnLike.setImageResource(
+            if (post.is_liked) R.drawable.filledheart else R.drawable.like
+        )
+
+        // Update like text
+        holder.likesText.text = when (post.like_count) {
+            0 -> "Be the first to like"
+            1 -> "Liked by 1 user"
+            else -> "Liked by ${post.like_count} users"
         }
-        listeners.clear()
     }
 
-    private fun getUsernameAndNotify(likerId: String, postOwnerId: String, postId: String) {
-        val usersRef = FirebaseDatabase.getInstance().getReference("users")
+    private fun toggleLike(holder: PostViewHolder, post: Post, position: Int) {
+        val authToken = sessionManager.getAuthToken()
 
-        usersRef.child(likerId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val likerName = snapshot.child("username").getValue(String::class.java)
-                        ?: snapshot.child("email").getValue(String::class.java)?.substringBefore("@")
-                        ?: "Someone"
+        if (authToken == null) {
+            Toast.makeText(holder.itemView.context, "Please login first", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-                    Notificationhelperfcm.sendLikeNotification(
-                        likerId = likerId,
-                        likerName = likerName,
-                        postOwnerId = postOwnerId,
-                        postId = postId
-                    )
+        // Optimistic UI update
+        val wasLiked = post.is_liked
+        val originalLikeCount = post.like_count
+
+        post.is_liked = !wasLiked
+        post.like_count = if (post.is_liked) post.like_count + 1 else post.like_count - 1
+        updateLikeUI(holder, post)
+
+        // Make API call
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = ToggleLikeRequest(
+                    auth_token = authToken,
+                    post_id = post.post_id
+                )
+
+                val response = RetrofitClient.apiService.toggleLike(request)
+
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        val data = response.body()?.data
+                        if (data != null) {
+                            // Update with server response
+                            post.is_liked = data.is_liked
+                            post.like_count = data.like_count
+                            updateLikeUI(holder, post)
+                            notifyItemChanged(position)
+
+                            val message = if (data.is_liked) "Liked ❤️" else "Unliked 💔"
+                            Toast.makeText(holder.itemView.context, message, Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        // Revert on failure
+                        post.is_liked = wasLiked
+                        post.like_count = originalLikeCount
+                        updateLikeUI(holder, post)
+
+                        Toast.makeText(
+                            holder.itemView.context,
+                            response.body()?.message ?: "Failed to update like",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    // Revert on error
+                    post.is_liked = wasLiked
+                    post.like_count = originalLikeCount
+                    updateLikeUI(holder, post)
 
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("PostAdapter", "Error getting username: ${error.message}")
+                    Log.e("PostAdapter", "Error toggling like: ${e.message}", e)
+                    Toast.makeText(
+                        holder.itemView.context,
+                        "Network error",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-            })
+            }
+        }
+    }
+
+    fun updatePost(position: Int, updatedPost: Post) {
+        if (position in postList.indices) {
+            postList[position] = updatedPost
+            notifyItemChanged(position)
+        }
     }
 }
