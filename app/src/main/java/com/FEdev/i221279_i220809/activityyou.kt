@@ -1,82 +1,3 @@
-//package com.FEdev.i221279_i220809
-//import android.content.Intent
-//import android.os.Bundle
-//import android.util.Log
-//import android.widget.ImageView
-//import android.widget.TextView
-//import androidx.activity.enableEdgeToEdge
-//import androidx.appcompat.app.AppCompatActivity
-//import androidx.core.view.ViewCompat
-//import androidx.core.view.WindowInsetsCompat
-//import de.hdodenhof.circleimageview.CircleImageView
-//
-//class activityyou : AppCompatActivity() {
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        super.onCreate(savedInstanceState)
-//        enableEdgeToEdge()
-//        setContentView(R.layout.activity_activityyou)
-//        Log.d("ActivityStack", "Activityyoy onCreate")
-//        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-//            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-//            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-//            insets
-//        }
-//        val homeNav = findViewById<ImageView>(R.id.nav_home)
-//        homeNav.setOnClickListener {
-//            val intent = Intent(this, homepage::class.java)
-//            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-//            startActivity(intent)
-//        }
-//
-//        val likeNav = findViewById<ImageView>(R.id.nav_like)
-//        likeNav.setOnClickListener {
-//            val intent = Intent(this, activitypage::class.java)
-//            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-//            startActivity(intent)
-//        }
-//        val searchNav = findViewById<ImageView>(R.id.nav_search)
-//        searchNav.setOnClickListener {
-//            val intent = Intent(this, searchpage::class.java)
-//            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-//            startActivity(intent)
-//        }
-//        val profileNav = findViewById< CircleImageView>(R.id.nav_profile)
-//        profileNav.setOnClickListener {
-//            val intent = Intent(this, activityprofile::class.java)
-//            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-//            startActivity(intent)
-//        }
-//
-//        val you = findViewById<TextView>(R.id.tabYou)
-//        you.setOnClickListener {
-//            val intent = Intent(this, activityyou::class.java)
-//            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-//            startActivity(intent)
-//        }
-//        val following= findViewById<TextView>(R.id.tabFollowing)
-//        following.setOnClickListener {
-//            val intent = Intent(this, activitypage::class.java)
-//            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-//            startActivity(intent)
-//        }
-//        val addpic = findViewById< ImageView>(R.id.add)
-//        addpic.setOnClickListener {
-//            val intent = Intent(this, selectpicture::class.java)
-//            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-//            startActivity(intent)
-//        }
-//
-//
-//
-//    }
-//
-//
-//    override fun onDestroy() {
-//        super.onDestroy()
-//        Log.d("ActivityStack", "Activityyou onDestroy")
-//    }
-//}
-
 package com.FEdev.i221279_i220809
 
 import android.content.Intent
@@ -84,7 +5,6 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -94,22 +14,27 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.firebase.auth.FirebaseAuth
+import androidx.lifecycle.lifecycleScope
+import com.FEdev.i221279_i220809.models.*
+import com.FEdev.i221279_i220809.network.RetrofitClient
+import com.FEdev.i221279_i220809.utils.SessionManager
 import de.hdodenhof.circleimageview.CircleImageView
+import kotlinx.coroutines.launch
 
 class activityyou : AppCompatActivity() {
 
     private lateinit var followRequestsContainer: LinearLayout
     private lateinit var followRequestsHeader: TextView
-    private lateinit var emptyRequestsText: TextView
-    private val auth = FirebaseAuth.getInstance()
+    private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_activityyou)
 
-        Log.d("ActivityStack", "Activityyou onCreate")
+        Log.d("ActivityYou", "onCreate")
+
+        sessionManager = SessionManager(this)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -117,103 +42,92 @@ class activityyou : AppCompatActivity() {
             insets
         }
 
-        // Initialize follow requests views
+        // Initialize views
         followRequestsContainer = findViewById(R.id.followRequestsContainer)
         followRequestsHeader = findViewById(R.id.followRequestsHeader)
 
         // Load follow requests
         loadFollowRequests()
 
-        // Bottom Navigation
-        val homeNav = findViewById<ImageView>(R.id.nav_home)
-        homeNav.setOnClickListener {
-            val intent = Intent(this, homepage::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-        }
-
-        val likeNav = findViewById<ImageView>(R.id.nav_like)
-        likeNav.setOnClickListener {
-            val intent = Intent(this, activitypage::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-        }
-
-        val searchNav = findViewById<ImageView>(R.id.nav_search)
-        searchNav.setOnClickListener {
-            val intent = Intent(this, searchpage::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-        }
-
-        val profileNav = findViewById<CircleImageView>(R.id.nav_profile)
-        profileNav.setOnClickListener {
-            val intent = Intent(this, activityprofile::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-        }
-
-        val you = findViewById<TextView>(R.id.tabYou)
-        you.setOnClickListener {
-            val intent = Intent(this, activityyou::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-        }
-
-        val following = findViewById<TextView>(R.id.tabFollowing)
-        following.setOnClickListener {
-            val intent = Intent(this, activitypage::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-        }
-
-        val addpic = findViewById<ImageView>(R.id.add)
-        addpic.setOnClickListener {
-            val intent = Intent(this, selectpicture::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-        }
+        // Setup navigation
+        setupNavigation()
     }
 
     private fun loadFollowRequests() {
-        val currentUserId = auth.currentUser?.uid
+        val authToken = sessionManager.getAuthToken()
 
-        if (currentUserId == null) {
-            Log.e("ActivityYou", "User not logged in")
-            followRequestsHeader.visibility = View.GONE
+        if (authToken == null) {
+            Log.e("ActivityYou", "Not logged in")
+            showNoRequests("Please login to see follow requests")
             return
         }
 
-        FollowRequestManager.getPendingRequests(currentUserId) { requests ->
-            runOnUiThread {
-                followRequestsContainer.removeAllViews()
+        lifecycleScope.launch {
+            try {
+                val request = GetFollowRequestsRequest(authToken)
+                val response = RetrofitClient.apiService.getFollowRequests(request)
 
-                if (requests.isEmpty()) {
-                    followRequestsHeader.text = "Follow Requests"
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+                    val requests = data?.requests ?: emptyList()
 
-                    // Show "No requests" message
-                    val emptyView = TextView(this).apply {
-                        text = "No pending follow requests"
-                        textSize = 14f
-                        setPadding(16, 16, 16, 16)
-                        setTextColor(resources.getColor(android.R.color.darker_gray, null))
+                    runOnUiThread {
+                        displayFollowRequests(requests)
                     }
-                    followRequestsContainer.addView(emptyView)
+
+                    Log.d("ActivityYou", "Loaded ${requests.size} follow requests")
                 } else {
-                    followRequestsHeader.text = "Follow Requests (${requests.size})"
-
-                    // Add each follow request
-                    requests.forEach { request ->
-                        val requestView = createFollowRequestView(request, currentUserId)
-                        followRequestsContainer.addView(requestView)
+                    Log.e("ActivityYou", "Failed to load requests: ${response.body()?.message}")
+                    runOnUiThread {
+                        showNoRequests("Failed to load requests")
                     }
+                }
+            } catch (e: Exception) {
+                Log.e("ActivityYou", "Error loading requests: ${e.message}", e)
+                runOnUiThread {
+                    showNoRequests("Error: ${e.message}")
                 }
             }
         }
     }
 
-    private fun createFollowRequestView(request: FollowRequest, currentUserId: String): View {
-        val view = LayoutInflater.from(this).inflate(R.layout.item_follow_request_inline, null)
+    private fun displayFollowRequests(requests: List<FollowRequestItem>) {
+        followRequestsContainer.removeAllViews()
+
+        if (requests.isEmpty()) {
+            showNoRequests("No pending follow requests")
+            return
+        }
+
+        followRequestsHeader.text = "Follow Requests (${requests.size})"
+        followRequestsHeader.visibility = View.VISIBLE
+
+        requests.forEach { request ->
+            val requestView = createFollowRequestView(request)
+            followRequestsContainer.addView(requestView)
+        }
+    }
+
+    private fun showNoRequests(message: String) {
+        followRequestsHeader.text = "Follow Requests"
+        followRequestsHeader.visibility = View.VISIBLE
+        followRequestsContainer.removeAllViews()
+
+        val emptyView = TextView(this).apply {
+            text = message
+            textSize = 14f
+            setPadding(32, 32, 32, 32)
+            setTextColor(resources.getColor(android.R.color.darker_gray, null))
+        }
+        followRequestsContainer.addView(emptyView)
+    }
+
+    private fun createFollowRequestView(request: FollowRequestItem): View {
+        val view = LayoutInflater.from(this).inflate(
+            R.layout.item_follow_request_inline,
+            followRequestsContainer,
+            false
+        )
 
         val profileImage = view.findViewById<CircleImageView>(R.id.requestProfileImage)
         val username = view.findViewById<TextView>(R.id.requestUsername)
@@ -221,67 +135,184 @@ class activityyou : AppCompatActivity() {
         val rejectBtn = view.findViewById<Button>(R.id.rejectButton)
 
         // Set data
-        username.text = "${request.fromUsername} wants to follow you"
-        profileImage.setImageResource(R.drawable.mystory) // Default profile image
+        username.text = "${request.username} wants to follow you"
+        profileImage.setImageResource(R.drawable.mystory)
+
+        // Calculate time ago
+        val timeAgo = getTimeAgo(request.created_at)
+        val timestampText = view.findViewById<TextView>(R.id.requestTimestamp)
+        timestampText?.text = timeAgo
 
         // Accept button
         acceptBtn.setOnClickListener {
-            acceptFollowRequest(request, currentUserId)
+            acceptFollowRequest(request)
         }
 
         // Reject button
         rejectBtn.setOnClickListener {
-            rejectFollowRequest(request, currentUserId)
+            rejectFollowRequest(request)
+        }
+
+        // Click on profile to view
+        profileImage.setOnClickListener {
+            openUserProfile(request.follower_id, request.username)
+        }
+
+        username.setOnClickListener {
+            openUserProfile(request.follower_id, request.username)
         }
 
         return view
     }
 
-    private fun acceptFollowRequest(request: FollowRequest, currentUserId: String) {
-        FollowRequestManager.acceptFollowRequest(
-            request.requestId,
-            request.fromUserId,
-            currentUserId,
-            onSuccess = {
-                runOnUiThread {
-                    Toast.makeText(this, "Accepted ${request.fromUsername}'s request", Toast.LENGTH_SHORT).show()
-                    loadFollowRequests() // Reload the list
+    private fun acceptFollowRequest(request: FollowRequestItem) {
+        val authToken = sessionManager.getAuthToken() ?: return
+
+        lifecycleScope.launch {
+            try {
+                val acceptRequest = AcceptFollowRequestRequest(authToken, request.request_id)
+                val response = RetrofitClient.apiService.acceptFollowRequest(acceptRequest)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@activityyou,
+                            "Accepted ${request.username}'s request",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        loadFollowRequests() // Reload list
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@activityyou,
+                            "Failed to accept request",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
-            },
-            onFailure = { error ->
+            } catch (e: Exception) {
+                Log.e("ActivityYou", "Error accepting request: ${e.message}", e)
                 runOnUiThread {
-                    Toast.makeText(this, "Error: $error", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@activityyou,
+                        "Error: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
-        )
+        }
     }
 
-    private fun rejectFollowRequest(request: FollowRequest, currentUserId: String) {
-        FollowRequestManager.rejectFollowRequest(
-            request.requestId,
-            currentUserId,
-            onSuccess = {
-                runOnUiThread {
-                    Toast.makeText(this, "Rejected ${request.fromUsername}'s request", Toast.LENGTH_SHORT).show()
-                    loadFollowRequests() // Reload the list
+    private fun rejectFollowRequest(request: FollowRequestItem) {
+        val authToken = sessionManager.getAuthToken() ?: return
+
+        lifecycleScope.launch {
+            try {
+                val rejectRequest = RejectFollowRequestRequest(authToken, request.request_id)
+                val response = RetrofitClient.apiService.rejectFollowRequest(rejectRequest)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@activityyou,
+                            "Rejected ${request.username}'s request",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        loadFollowRequests() // Reload list
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@activityyou,
+                            "Failed to reject request",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
-            },
-            onFailure = { error ->
+            } catch (e: Exception) {
+                Log.e("ActivityYou", "Error rejecting request: ${e.message}", e)
                 runOnUiThread {
-                    Toast.makeText(this, "Error: $error", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@activityyou,
+                        "Error: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
-        )
+        }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d("ActivityStack", "Activityyou onDestroy")
+    private fun openUserProfile(userId: Int, username: String) {
+        val intent = Intent(this, activityprofile2::class.java)
+        intent.putExtra("USER_ID", userId)
+        intent.putExtra("USERNAME", username)
+        startActivity(intent)
+    }
+
+    private fun getTimeAgo(timestamp: Long): String {
+        val now = System.currentTimeMillis() / 1000
+        val diff = now - timestamp
+
+        return when {
+            diff < 60 -> "Just now"
+            diff < 3600 -> "${diff / 60}m ago"
+            diff < 86400 -> "${diff / 3600}h ago"
+            diff < 604800 -> "${diff / 86400}d ago"
+            else -> "${diff / 604800}w ago"
+        }
+    }
+
+    private fun setupNavigation() {
+        findViewById<ImageView>(R.id.nav_home).setOnClickListener {
+            startActivity(Intent(this, homepage::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+        }
+
+        findViewById<ImageView>(R.id.nav_like).setOnClickListener {
+            startActivity(Intent(this, activitypage::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+        }
+
+        findViewById<ImageView>(R.id.nav_search).setOnClickListener {
+            startActivity(Intent(this, searchpage::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+        }
+
+        findViewById<CircleImageView>(R.id.nav_profile).setOnClickListener {
+            startActivity(Intent(this, activityprofile::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+        }
+
+        findViewById<TextView>(R.id.tabYou).setOnClickListener {
+            // Already on this page
+        }
+
+        findViewById<TextView>(R.id.tabFollowing).setOnClickListener {
+            startActivity(Intent(this, activitypage::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+        }
+
+        findViewById<ImageView>(R.id.add).setOnClickListener {
+            startActivity(Intent(this, selectpicture::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            })
+        }
     }
 
     override fun onResume() {
         super.onResume()
         // Reload requests when returning to this activity
         loadFollowRequests()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("ActivityYou", "onDestroy")
     }
 }
