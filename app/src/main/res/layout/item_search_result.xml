@@ -7,11 +7,28 @@
     android:gravity="center_vertical"
     android:background="?attr/selectableItemBackground">
 
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/searchresult"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/mystory" />
+    <!-- Profile Picture Container with Status Indicator -->
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/searchresult"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/mystory" />
+
+        <!-- Online/Offline Status Indicator -->
+        <View
+            android:id="@+id/statusIndicator"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="2dp"
+            android:layout_marginBottom="2dp"
+            android:background="@drawable/status_dot_offline" />
+
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"

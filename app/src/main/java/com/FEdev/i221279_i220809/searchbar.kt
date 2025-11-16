@@ -9,7 +9,6 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -21,9 +20,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.FEdev.i221279_i220809.models.SearchUsersRequest
 import com.FEdev.i221279_i220809.models.SearchUserResult
+import com.FEdev.i221279_i220809.models.GetMultipleStatusesRequest
 import com.FEdev.i221279_i220809.network.RetrofitClient
 import com.FEdev.i221279_i220809.utils.SessionManager
-import de.hdodenhof.circleimageview.CircleImageView
 import kotlinx.coroutines.launch
 
 class searchbar : AppCompatActivity() {
@@ -151,6 +150,9 @@ class searchbar : AppCompatActivity() {
                         } else {
                             searchResultsRecycler.visibility = View.VISIBLE
                             noResultsText.visibility = View.GONE
+
+                            // Fetch online status for all search results
+                            fetchUserStatuses()
                         }
 
                         Log.d("SearchBar", "✅ Found ${data.total} users")
@@ -170,6 +172,44 @@ class searchbar : AppCompatActivity() {
                     "Network error",
                     Toast.LENGTH_SHORT
                 ).show()
+            }
+        }
+    }
+
+    private fun fetchUserStatuses() {
+        val authToken = sessionManager.getAuthToken() ?: return
+
+        if (searchResults.isEmpty()) return
+
+        lifecycleScope.launch {
+            try {
+                val userIds = searchResults.map { it.user_id }
+                val request = GetMultipleStatusesRequest(
+                    auth_token = authToken,
+                    user_ids = userIds
+                )
+
+                val response = RetrofitClient.apiService.getMultipleUserStatuses(request)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val statusData = response.body()?.data?.statuses
+
+                    if (statusData != null) {
+                        // Create a map of user_id to online status
+                        val statusMap = statusData.associate {
+                            it.user_id to it.is_online
+                        }
+
+                        // Update adapter with statuses
+                        adapter.updateStatuses(statusMap)
+
+                        Log.d("SearchBar", "✅ Updated statuses for ${statusData.size} users")
+                    }
+                } else {
+                    Log.e("SearchBar", "Failed to fetch statuses: ${response.body()?.message}")
+                }
+            } catch (e: Exception) {
+                Log.e("SearchBar", "Error fetching statuses: ${e.message}", e)
             }
         }
     }
