@@ -62,28 +62,51 @@ class activityyou : AppCompatActivity() {
             return
         }
 
+        Log.d("ActivityYou", "Loading follow requests with token: ${authToken.take(10)}...")
+
         lifecycleScope.launch {
             try {
                 val request = GetFollowRequestsRequest(authToken)
                 val response = RetrofitClient.apiService.getFollowRequests(request)
 
-                if (response.isSuccessful && response.body()?.success == true) {
-                    val data = response.body()?.data
-                    val requests = data?.requests ?: emptyList()
+                Log.d("ActivityYou", "Response code: ${response.code()}")
 
+                // Log raw response for debugging
+                if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("ActivityYou", "Error response: $errorBody")
                     runOnUiThread {
-                        displayFollowRequests(requests)
+                        showNoRequests("Server error: ${response.code()}")
                     }
+                    return@launch
+                }
 
-                    Log.d("ActivityYou", "Loaded ${requests.size} follow requests")
-                } else {
-                    Log.e("ActivityYou", "Failed to load requests: ${response.body()?.message}")
+                val body = response.body()
+                Log.d("ActivityYou", "Response body: $body")
+
+                if (body?.success == true) {
+                    val requestsData = body.data
+                    val requestsList = requestsData?.requests ?: emptyList()
+
+                    Log.d("ActivityYou", "✅ Loaded ${requestsList.size} requests")
+
                     runOnUiThread {
-                        showNoRequests("Failed to load requests")
+                        displayFollowRequests(requestsList)
+                    }
+                } else {
+                    Log.e("ActivityYou", "❌ Failed: ${body?.message}")
+                    runOnUiThread {
+                        showNoRequests(body?.message ?: "Failed to load requests")
                     }
                 }
+            } catch (e: com.google.gson.JsonSyntaxException) {
+                Log.e("ActivityYou", "❌ JSON Parse Error: ${e.message}", e)
+                runOnUiThread {
+                    showNoRequests("Server returned invalid data")
+                }
             } catch (e: Exception) {
-                Log.e("ActivityYou", "Error loading requests: ${e.message}", e)
+                Log.e("ActivityYou", "❌ Exception: ${e.message}", e)
+                e.printStackTrace()
                 runOnUiThread {
                     showNoRequests("Error: ${e.message}")
                 }

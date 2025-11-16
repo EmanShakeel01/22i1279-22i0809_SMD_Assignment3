@@ -7,6 +7,8 @@ import retrofit2.http.POST
 
 interface ApiService {
 
+    // ==================== AUTH ENDPOINTS ====================
+
     @POST("signup.php")
     suspend fun signup(@Body request: SignupRequest): Response<ApiResponse<UserData>>
 
@@ -19,6 +21,8 @@ interface ApiService {
     @POST("logout.php")
     suspend fun logout(@Body request: SessionRequest): Response<ApiResponse<Any>>
 
+    // ==================== STORY ENDPOINTS ====================
+
     @POST("upload_story.php")
     suspend fun uploadStory(@Body request: StoryUploadRequest): Response<ApiResponse<StoryUploadResponse>>
 
@@ -30,6 +34,9 @@ interface ApiService {
 
     @POST("get_all_stories.php")
     suspend fun getAllStories(@Body request: AllStoriesRequest): Response<ApiResponse<AllStoriesResponse>>
+
+    // ==================== POST ENDPOINTS ====================
+
     @POST("upload_post.php")
     suspend fun uploadPost(@Body request: PostUploadRequest): Response<ApiResponse<PostUploadResponse>>
 
@@ -39,9 +46,47 @@ interface ApiService {
     @POST("toggle_like.php")
     suspend fun toggleLike(@Body request: ToggleLikeRequest): Response<ApiResponse<ToggleLikeResponse>>
 
+    // ==================== COMMENT ENDPOINTS ====================
+
     @POST("add_comment.php")
     suspend fun addComment(@Body request: AddCommentRequest): Response<ApiResponse<AddCommentResponse>>
 
     @POST("get_comments.php")
     suspend fun getComments(@Body request: GetCommentsRequest): Response<ApiResponse<GetCommentsResponse>>
+
+    // ==================== SEARCH ENDPOINTS ====================
+
+    @POST("search_users.php")
+    suspend fun searchUsers(@Body request: SearchUsersRequest): Response<ApiResponse<SearchUsersResponse>>
+
+    // ==================== USER PROFILE ENDPOINTS ====================
+
+    @POST("get_user_profile.php")
+    suspend fun getUserProfile(@Body request: GetUserProfileRequest): Response<ApiResponse<GetUserProfileResponse>>
+
+    // ==================== FOLLOW REQUEST ENDPOINTS ====================
+
+    @POST("send_follow_request.php")
+    suspend fun sendFollowRequest(@Body request: SendFollowRequestRequest): Response<ApiResponse<Map<String, Any>>>
+
+    @POST("check_follow_status.php")
+    suspend fun checkFollowStatus(@Body request: CheckFollowStatusRequest): Response<ApiResponse<CheckFollowStatusResponse>>
+
+    @POST("get_follow_requests.php")
+    suspend fun getFollowRequests(@Body request: GetFollowRequestsRequest): Response<ApiResponse<GetFollowRequestsResponse>>
+
+    @POST("accept_follow_request.php")
+    suspend fun acceptFollowRequest(@Body request: AcceptFollowRequestRequest): Response<ApiResponse<Map<String, String>>>
+
+    @POST("reject_follow_request.php")
+    suspend fun rejectFollowRequest(@Body request: RejectFollowRequestRequest): Response<ApiResponse<Map<String, String>>>
+
+    @POST("update_status.php")
+    suspend fun updateStatus(@Body request: UpdateStatusRequest): Response<ApiResponse<Any>>
+
+    @POST("get_user_status.php")
+    suspend fun getUserStatus(@Body request: GetUserStatusRequest): Response<ApiResponse<UserStatusData>>
+
+    @POST("get_multiple_statuses.php")
+    suspend fun getMultipleUserStatuses(@Body request: GetMultipleStatusesRequest): Response<ApiResponse<MultipleStatusesData>>
 }

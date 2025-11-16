@@ -2,9 +2,11 @@ package com.FEdev.i221279_i220809.models
 
 data class ApiResponse<T>(
     val success: Boolean,
-    val message: String,
-    val data: T? = null
+    val message: String?,
+    val data: T?
 )
+
+
 
 data class UserData(
     val user_id: Int,
@@ -12,6 +14,8 @@ data class UserData(
     val username: String,
     val auth_token: String
 )
+
+
 
 data class SignupRequest(
     val email: String,
@@ -23,6 +27,7 @@ data class LoginRequest(
     val identifier: String,
     val password: String
 )
+
 
 data class SessionRequest(
     val auth_token: String
@@ -47,7 +52,6 @@ data class Story(
     val timestamp: Long,
     val expires_at: Long
 )
-
 
 data class MyStoriesRequest(
     val auth_token: String
@@ -74,7 +78,6 @@ data class StoryData(
     val count: Int,
     val username: String
 )
-
 
 data class AllStoriesRequest(
     val auth_token: String
@@ -115,9 +118,9 @@ data class Post(
     val caption: String,
     val image_base64: String,
     val timestamp: Long,
-    var like_count: Int,        // ✅ Changed to var
-    var comment_count: Int,     // ✅ Changed to var
-    var is_liked: Boolean       // ✅ Changed to var
+    var like_count: Int,
+    var comment_count: Int,
+    var is_liked: Boolean
 )
 
 data class GetPostsResponse(
@@ -165,3 +168,126 @@ data class GetCommentsResponse(
     val comments: List<Comment>,
     val total: Int
 )
+
+// ==================== SEARCH MODELS ====================
+
+data class SearchUsersRequest(
+    val auth_token: String,
+    val search_query: String
+)
+
+data class SearchUserResult(
+    val user_id: Int,
+    val username: String,
+    val email: String,
+    val fullname: String?
+)
+
+data class SearchUsersResponse(
+    val users: List<SearchUserResult>,
+    val total: Int,
+    val query: String
+)
+
+// ==================== USER PROFILE MODELS ====================
+
+data class GetUserProfileRequest(
+    val auth_token: String,
+    val user_id: Int
+)
+
+data class UserProfile(
+    val user_id: Int,
+    val username: String,
+    val email: String,
+    val fullname: String?,
+    val bio: String?,
+    val profile_image: String?,
+    val post_count: Int
+)
+
+data class GetUserProfileResponse(
+    val user: UserProfile
+)
+
+// ==================== FOLLOW REQUEST MODELS ====================
+
+data class SendFollowRequestRequest(
+    val auth_token: String,
+    val target_user_id: Int
+)
+
+data class CheckFollowStatusRequest(
+    val auth_token: String,
+    val target_user_id: Int
+)
+
+data class CheckFollowStatusResponse(
+    val status: String // "none", "pending", "accepted"
+)
+
+data class GetFollowRequestsRequest(
+    val auth_token: String
+)
+
+data class GetFollowRequestsResponse(
+    val requests: List<FollowRequestItem>,
+    val total: Int
+)
+
+data class FollowRequestItem(
+    val request_id: Int,
+    val follower_id: Int,
+    val username: String,
+    val email: String,
+    val created_at: Long
+)
+
+data class AcceptFollowRequestRequest(
+    val auth_token: String,
+    val request_id: Int
+)
+
+data class RejectFollowRequestRequest(
+    val auth_token: String,
+    val request_id: Int
+)
+// ==================== ONLINE STATUS MODELS ====================
+
+data class UpdateStatusRequest(
+    val auth_token: String,
+    val status: String  // "online" or "offline"
+)
+
+data class GetUserStatusRequest(
+    val auth_token: String,
+    val target_user_id: Int
+)
+
+data class UserStatusData(
+    val user_id: Int,
+    val is_online: Boolean,
+    val last_seen: Long?
+)
+
+data class GetUserStatusResponse(
+    val success: Boolean,
+    val message: String,
+    val data: UserStatusData?
+)
+
+data class GetMultipleStatusesRequest(
+    val auth_token: String,
+    val user_ids: List<Int>
+)
+
+data class MultipleStatusesData(
+    val statuses: List<UserStatusData>
+)
+
+data class GetMultipleStatusesResponse(
+    val success: Boolean,
+    val message: String,
+    val data: MultipleStatusesData?
+)
+

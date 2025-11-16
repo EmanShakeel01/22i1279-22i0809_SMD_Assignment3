@@ -40,7 +40,6 @@ class login2 : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Disable button
             loginBtn.isEnabled = false
 
             lifecycleScope.launch {
@@ -65,48 +64,33 @@ class login2 : AppCompatActivity() {
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body?.success == true && body.data != null) {
+
                     val userData = body.data
 
-                    // Save session
+                    // Save session correctly
                     sessionManager.saveSession(
-                        userData.auth_token,
+                        userData.auth_token,   // <-- FIXED
                         userData.user_id,
                         userData.email,
                         userData.username
                     )
 
-                    Toast.makeText(
-                        this@login2,
-                        body.message,
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this@login2, body.message, Toast.LENGTH_SHORT).show()
 
-                    // Navigate to homepage
                     startActivity(Intent(this@login2, homepage::class.java))
                     finish()
+
                 } else {
-                    Toast.makeText(
-                        this@login2,
-                        body?.message ?: "Login failed",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this@login2, body?.message ?: "Login failed", Toast.LENGTH_SHORT).show()
                     loginBtn.isEnabled = true
                 }
             } else {
-                Toast.makeText(
-                    this@login2,
-                    "Server error: ${response.code()}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this@login2, "Server error: ${response.code()}", Toast.LENGTH_SHORT).show()
                 loginBtn.isEnabled = true
             }
         } catch (e: Exception) {
             Log.e("Login", "Error: ${e.message}")
-            Toast.makeText(
-                this@login2,
-                "Network error: ${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
+            Toast.makeText(this@login2, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
             loginBtn.isEnabled = true
         }
     }

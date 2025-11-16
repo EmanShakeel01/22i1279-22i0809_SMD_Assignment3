@@ -7,8 +7,8 @@ import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.FEdev.i221279_i220809.network.RetrofitClient
 import com.FEdev.i221279_i220809.models.SessionRequest
+import com.FEdev.i221279_i220809.network.RetrofitClient
 import com.FEdev.i221279_i220809.utils.SessionManager
 import kotlinx.coroutines.launch
 
@@ -22,55 +22,63 @@ class MainActivity : AppCompatActivity() {
 
         sessionManager = SessionManager(this)
 
-        // Wait 5 seconds (splash screen requirement)
+        // Show splash for 5 sec
         Handler(Looper.getMainLooper()).postDelayed({
             checkUserSession()
         }, 5000)
     }
 
     private fun checkUserSession() {
-        val authToken = sessionManager.getAuthToken()
+        val token = sessionManager.getAuthToken()
 
-        if (authToken != null) {
-            // User has a saved session, verify it with server
-            lifecycleScope.launch {
-                try {
-                    val response = RetrofitClient.apiService.checkSession(
-                        SessionRequest(authToken)
-                    )
+        if (token == null) {
+            // No saved session → go login
+            startActivity(Intent(this, Login1::class.java))
+            finish()
+            return
+        }
 
-                    if (response.isSuccessful && response.body()?.success == true) {
-                        val userData = response.body()?.data
+        // Validate session with backend
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitClient.apiService.checkSession(SessionRequest(token))
 
-                        // Update session data
-                        if (userData != null) {
-                            sessionManager.saveSession(
-                                authToken,
-                                userData.user_id,
-                                userData.email,
-                                userData.username
-                            )
+                if (response.isSuccessful && response.body()?.success == true) {
 
-                            // Go to homepage - logged in user
-                            startActivity(Intent(this@MainActivity, homepage::class.java))
-                        }
+                    val user = response.body()?.data
+
+                    if (user != null) {
+                        // Save updated session
+                        sessionManager.saveSession(
+                            token,
+                            user.user_id,
+                            user.email,
+                            user.username
+                        )
+
+                        // Go to home
+                        startActivity(Intent(this@MainActivity, homepage::class.java))
+                        finish()
                     } else {
-                        // Session invalid, clear and go to login
                         sessionManager.clearSession()
                         startActivity(Intent(this@MainActivity, Login1::class.java))
+                        finish()
                     }
-                } catch (e: Exception) {
-                    Log.e("MainActivity", "Error checking session: ${e.message}")
-                    // Network error, clear session and go to login
+
+                } else {
+                    // Invalid session → force login
                     sessionManager.clearSession()
                     startActivity(Intent(this@MainActivity, Login1::class.java))
+                    finish()
                 }
+
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Session check failed: ${e.message}")
+
+                sessionManager.clearSession()
+                startActivity(Intent(this@MainActivity, Login1::class.java))
                 finish()
             }
-        } else {
-            // No session saved, go to login screen - first time or logged out user
-            startActivity(Intent(this@MainActivity, Login1::class.java))
-            finish()
         }
     }
 }
