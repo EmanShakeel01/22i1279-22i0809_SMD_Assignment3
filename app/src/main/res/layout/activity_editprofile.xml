@@ -15,7 +15,7 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingVertical="10dp">
+        android:paddingVertical="30dp">
 
         <TextView
             android:id="@+id/cancelText"
@@ -70,6 +70,7 @@
 
 
         <TextView
+            android:id="@+id/changephoto"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Change Profile Photo"

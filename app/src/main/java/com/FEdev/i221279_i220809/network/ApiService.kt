@@ -89,4 +89,6 @@ interface ApiService {
 
     @POST("get_multiple_statuses.php")
     suspend fun getMultipleUserStatuses(@Body request: GetMultipleStatusesRequest): Response<ApiResponse<MultipleStatusesData>>
+    @POST("update_profile_picture.php")
+    suspend fun updateProfilePicture(@Body request: UpdateProfilePictureRequest): Response<UpdateProfilePictureResponse>
 }

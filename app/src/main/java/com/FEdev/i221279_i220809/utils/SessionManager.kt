@@ -60,6 +60,16 @@ class SessionManager(context: Context) {
     fun isLoggedIn(): Boolean {
         return getAuthToken() != null
     }
+    fun saveProfilePic(base64Image: String) {
+        val editor = sharedPreferences.edit()
+        editor.putString("profile_pic", base64Image)
+        editor.apply()
+    }
+
+    fun getProfilePic(): String? {
+        return sharedPreferences.getString("profile_pic", null)
+    }
+
 
     fun clearSession() {
         sharedPreferences.edit().clear().apply()

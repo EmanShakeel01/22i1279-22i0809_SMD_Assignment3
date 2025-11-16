@@ -32,6 +32,8 @@ class homepage : AppCompatActivity() {
     private lateinit var postAdapter: PostAdapter
     private var storyUsersData: MutableList<UserStoryPreview> = mutableListOf()
 
+    private lateinit var navProfileImage: CircleImageView // 🔥 Added this
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -47,16 +49,22 @@ class homepage : AppCompatActivity() {
             insets
         }
 
+        // Initialize navigation profile image
+        navProfileImage = findViewById(R.id.nav_profile)
+
         // ------------------- NAVIGATION BUTTONS -------------------
         setupNavigation()
 
         // ------------------- STORY SECTION (Web Service) -------------------
         setupMyStoryClick()
-        loadStoryUsersFromWebService() // ✅ Changed to Web Service
+        loadStoryUsersFromWebService()
 
         // ------------------- POSTS FEED (Web Service) -------------------
         setupPostsRecyclerView()
         loadPostsFromWebService()
+
+        // ------------------- LOAD PROFILE PICTURE -------------------
+        loadProfilePicture() // 🔥 Load profile pic on create
 
         // ------------------- INCOMING CALL LISTENER (Firebase) -------------------
         listenForIncomingCalls()
@@ -83,8 +91,7 @@ class homepage : AppCompatActivity() {
             startActivity(intent)
         }
 
-        val profileNav = findViewById<CircleImageView>(R.id.nav_profile)
-        profileNav.setOnClickListener {
+        navProfileImage.setOnClickListener {
             val intent = Intent(this, activityprofile::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             startActivity(intent)
@@ -112,6 +119,33 @@ class homepage : AppCompatActivity() {
         }
     }
 
+    // 🔥 NEW: Load profile picture from SessionManager
+    private fun loadProfilePicture() {
+        try {
+            val base64Pic = sessionManager.getProfilePic()
+
+            Log.d("HomePage", "Loading profile picture from SessionManager")
+
+            if (!base64Pic.isNullOrEmpty()) {
+                Log.d("HomePage", "Profile pic found, length: ${base64Pic.length}")
+
+                val decodedBytes = Base64.decode(base64Pic, Base64.NO_WRAP)
+                val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+
+                if (bitmap != null) {
+                    navProfileImage.setImageBitmap(bitmap)
+                    Log.d("HomePage", "✅ Profile picture loaded in nav bar")
+                } else {
+                    Log.e("HomePage", "❌ Failed to decode bitmap")
+                }
+            } else {
+                Log.d("HomePage", "No saved profile picture")
+            }
+        } catch (e: Exception) {
+            Log.e("HomePage", "❌ Error loading profile picture: ${e.message}", e)
+        }
+    }
+
     // ------------------- STORY HANDLING (Web Service) -------------------
     private fun setupMyStoryClick() {
         val myStory = findViewById<CircleImageView>(R.id.story1)
@@ -128,7 +162,6 @@ class homepage : AppCompatActivity() {
         }
     }
 
-    // ✅ NEW: Load stories from Web Service instead of Firebase
     private fun loadStoryUsersFromWebService() {
         val authToken = sessionManager.getAuthToken()
 
@@ -175,7 +208,6 @@ class homepage : AppCompatActivity() {
         }
     }
 
-    // ✅ NEW: Update "My Story" circle with preview image
     private fun updateMyStoryCircle(myStory: UserStoryPreview) {
         val myStoryCircle = findViewById<CircleImageView>(R.id.story1)
 
@@ -191,7 +223,6 @@ class homepage : AppCompatActivity() {
         }
     }
 
-    // ✅ UPDATED: Update story circles with web service data
     private fun updateStoryNamesUI() {
         // Story 2
         if (storyUsersData.size > 0) {
@@ -202,7 +233,6 @@ class homepage : AppCompatActivity() {
 
             story2Text?.text = userStory.username
 
-            // Set preview image
             try {
                 val imageBytes = Base64.decode(userStory.preview_image, Base64.DEFAULT)
                 val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
@@ -227,7 +257,6 @@ class homepage : AppCompatActivity() {
 
             story3Text?.text = userStory.username
 
-            // Set preview image
             try {
                 val imageBytes = Base64.decode(userStory.preview_image, Base64.DEFAULT)
                 val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
@@ -252,7 +281,6 @@ class homepage : AppCompatActivity() {
 
             story4Text?.text = userStory.username
 
-            // Set preview image
             try {
                 val imageBytes = Base64.decode(userStory.preview_image, Base64.DEFAULT)
                 val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
@@ -269,16 +297,14 @@ class homepage : AppCompatActivity() {
         }
     }
 
-    // ✅ NEW: Open user story with web service (pass user_id as Int)
     private fun openUserStoryFromWebService(userId: Int, username: String) {
         val intent = Intent(this, storyviewer::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        intent.putExtra("userId", userId) // Pass as Int
+        intent.putExtra("userId", userId)
         intent.putExtra("username", username)
         startActivity(intent)
     }
 
-    // ✅ NEW: Check if user has stories via web service
     private fun checkUserStoriesFromWebService(openCameraIfNone: Boolean) {
         val authToken = sessionManager.getAuthToken()
 
@@ -296,12 +322,10 @@ class homepage : AppCompatActivity() {
                     val data = response.body()?.data
 
                     if (data != null && data.stories.isNotEmpty()) {
-                        // Has stories, open viewer
                         val intent = Intent(this@homepage, storyviewer2::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                         startActivity(intent)
                     } else {
-                        // No stories
                         if (openCameraIfNone) {
                             val intent = Intent(this@homepage, takepicture::class.java)
                             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -414,9 +438,11 @@ class homepage : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh posts and stories when returning to homepage
+        Log.d("HomePage", "onResume - Reloading data")
+        // Refresh posts, stories, and profile picture when returning to homepage
         loadPostsFromWebService()
-        loadStoryUsersFromWebService() // ✅ Refresh stories too
+        loadStoryUsersFromWebService()
+        loadProfilePicture() // 🔥 Reload profile pic on resume
     }
 
     override fun onDestroy() {

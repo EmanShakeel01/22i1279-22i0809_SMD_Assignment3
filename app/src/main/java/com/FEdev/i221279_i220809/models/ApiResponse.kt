@@ -290,4 +290,17 @@ data class GetMultipleStatusesResponse(
     val message: String,
     val data: MultipleStatusesData?
 )
+data class UpdateProfilePictureRequest(
+    val auth_token: String,
+    val profile_picture: String
+)
 
+data class UpdateProfilePictureResponse(
+    val success: Boolean,
+    val message: String,
+    val data: ProfilePictureData? = null
+)
+
+data class ProfilePictureData(
+    val profile_picture_url: String
+)
