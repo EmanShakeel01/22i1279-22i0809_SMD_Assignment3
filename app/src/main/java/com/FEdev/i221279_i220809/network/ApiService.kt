@@ -91,4 +91,28 @@ interface ApiService {
     suspend fun getMultipleUserStatuses(@Body request: GetMultipleStatusesRequest): Response<ApiResponse<MultipleStatusesData>>
     @POST("update_profile_picture.php")
     suspend fun updateProfilePicture(@Body request: UpdateProfilePictureRequest): Response<UpdateProfilePictureResponse>
+
+
+// ==================== ADD TO ApiService.kt ====================
+
+    @POST("send_message.php")
+    suspend fun sendMessage(@Body request: SendMessageRequest): Response<ApiResponse<SendMessageResponse>>
+
+    @POST("get_messages.php")
+    suspend fun getMessages(@Body request: GetMessagesRequest): Response<ApiResponse<GetMessagesResponse>>
+
+    @POST("edit_message.php")
+    suspend fun editMessage(@Body request: EditMessageRequest): Response<ApiResponse<EditMessageResponse>>
+
+    @POST("delete_message.php")
+    suspend fun deleteMessage(@Body request: DeleteMessageRequest): Response<ApiResponse<DeleteMessageResponse>>
+
+    @POST("toggle_vanish_mode.php")
+    suspend fun toggleVanishMode(@Body request: ToggleVanishModeRequest): Response<ApiResponse<ToggleVanishModeResponse>>
+
+    @POST("clear_vanish_messages.php")
+    suspend fun clearVanishMessages(@Body request: ClearVanishMessagesRequest): Response<ApiResponse<ClearVanishMessagesResponse>>
+
+
+
 }

@@ -24,16 +24,22 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="i221279"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme._22i127922i0809_Assignment2"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name=".NewChatAdapter"
+            android:exported="false" />
+        <activity
+            android:name=".MessageDatabaseHelper"
+            android:exported="false" />
+        <activity
+            android:name=".utils.MessageDatabaseHelper"
+            android:exported="false" />
 
-
-        android:usesCleartextTraffic="true"
-        android:networkSecurityConfig="@xml/network_security_config">
-
-
-    <service
+        <service
             android:name=".MyFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
@@ -46,9 +52,7 @@
             android:resource="@drawable/ic_notification" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/white" />
-
-        <!-- ✅ Auto-initialize FCM -->
+            android:resource="@color/white" /> <!-- ✅ Auto-initialize FCM -->
         <meta-data
             android:name="firebase_messaging_auto_init_enabled"
             android:value="true" />

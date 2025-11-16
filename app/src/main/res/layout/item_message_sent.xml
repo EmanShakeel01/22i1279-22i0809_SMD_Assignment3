@@ -17,7 +17,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@android:color/white"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:visibility="gone" />  <!-- Start gone, shown in code -->
 
         <ImageView
             android:id="@+id/imageMessage"
@@ -25,5 +26,48 @@
             android:layout_height="200dp"
             android:visibility="gone"
             android:scaleType="centerCrop" />
+
+        <!-- NEW: Video Thumbnail -->
+        <ImageView
+            android:id="@+id/videoThumbnail"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:visibility="gone"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_video_placeholder" />  <!-- Placeholder shown in code -->
+
+        <!-- NEW: File Info -->
+        <TextView
+            android:id="@+id/fileInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <!-- NEW: Time and Status Row -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/messageTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:layout_marginEnd="4dp" />
+
+            <!-- NEW: Status Icon (sent only) -->
+            <ImageView
+                android:id="@+id/statusIcon"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:visibility="gone"
+                android:tint="@android:color/white" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

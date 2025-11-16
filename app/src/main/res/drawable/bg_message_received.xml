@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Background color: Light gray for received messages -->
+    <solid android:color="#E0E0E0" />
+
+    <!-- Rounded corners: 16dp radius for bubble effect -->
+    <corners android:radius="16dp" />
+
+    <!-- Optional: Subtle stroke for border -->
+    <stroke
+        android:width="1dp"
+        android:color="#CCCCCC" />
+
+    <!-- Optional: Padding to match your layout (10dp from code) -->
+    <padding
+        android:left="10dp"
+        android:top="10dp"
+        android:right="10dp"
+        android:bottom="10dp" />
+</shape>

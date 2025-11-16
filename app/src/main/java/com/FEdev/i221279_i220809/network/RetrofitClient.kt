@@ -11,7 +11,7 @@ object RetrofitClient {
     // For Android Emulator, use 10.0.2.2 (this points to your computer's localhost)
     // For Real Device on same WiFi: use your computer's IP (find it using ipconfig/ifconfig)
     // Example: "http://192.168.1.5/socially_api/api/"
-    private const val BASE_URL = "http://192.168.0.101/socially_api/api/"
+    private const val BASE_URL = "http://192.168.100.132/socially_api/api/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

@@ -4,9 +4,6 @@
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical">
-
-
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
@@ -14,13 +11,11 @@
         android:layout_marginTop="10dp"
         android:paddingHorizontal="12dp"
         android:weightSum="1">
-
         <ImageView
             android:id="@+id/btnBack"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/arrow_right" />
-
         <TextView
             android:id="@+id/chatTitle"
             android:layout_width="0dp"
@@ -30,7 +25,6 @@
             android:textStyle="bold"
             android:textSize="16sp"
             android:layout_marginStart="12dp" />
-
         <ImageView
             android:id="@+id/btnCall"
             android:layout_width="24dp"
@@ -41,14 +35,11 @@
             android:clickable="true"
             android:focusable="true" />
     </LinearLayout>
-
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>
-
     <LinearLayout
         android:id="@+id/messageInputLayout"
         android:layout_width="match_parent"
@@ -56,6 +47,7 @@
         android:background="#F5E4E2"
         android:layout_marginBottom="20dp"
         android:gravity="center_vertical"
+        android:orientation="horizontal"
         android:paddingHorizontal="8dp">
 
         <ImageView
@@ -74,7 +66,6 @@
             android:background="@android:color/white"
             android:layout_marginHorizontal="16dp"
             android:drawablePadding="8dp" />
-
         <ImageView
             android:id="@+id/micButton"
             android:layout_width="21dp"
@@ -82,7 +73,6 @@
             android:layout_marginEnd="8dp"
             app:tint="@color/darkbrown"
             android:src="@drawable/mic" />
-
         <ImageView
             android:id="@+id/photoButton"
             android:layout_width="21dp"
@@ -90,6 +80,39 @@
             android:layout_marginEnd="8dp"
             app:tint="@color/darkbrown"
             android:src="@drawable/photos" />
+
+        <!-- NEW: Video Button -->
+        <ImageView
+            android:id="@+id/videoButton"
+            android:layout_width="21dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="8dp"
+            app:tint="@color/darkbrown"
+            android:src="@drawable/ic_video"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- NEW: File Button -->
+        <ImageView
+            android:id="@+id/fileButton"
+            android:layout_width="21dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="8dp"
+            app:tint="@color/darkbrown"
+            android:src="@drawable/ic_file"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- NEW: Vanish Mode Button -->
+        <ImageView
+            android:id="@+id/vanishModeButton"
+            android:layout_width="21dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="8dp"
+            app:tint="@color/darkbrown"
+            android:src="@drawable/ic_vanish_off"
+            android:clickable="true"
+            android:focusable="true" />
 
         <ImageView
             android:id="@+id/send"

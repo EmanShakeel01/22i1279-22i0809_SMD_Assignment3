@@ -304,3 +304,101 @@ data class UpdateProfilePictureResponse(
 data class ProfilePictureData(
     val profile_picture_url: String
 )
+// Add to models/ApiResponse.kt
+
+// ==================== MESSAGING MODELS ====================
+
+data class SendMessageRequest(
+    val auth_token: String,
+    val receiver_id: Int,
+    val message_type: String, // "text", "image", "video", "file"
+    val message_text: String? = null,
+    val media_base64: String? = null,
+    val file_name: String? = null,
+    val file_size: Int? = null,
+    val vanish_mode: Boolean = false
+)
+
+data class SendMessageResponse(
+    val message_id: Int,
+    val thread_id: String,
+    val timestamp: Long,
+    val sender_id: Int,
+    val receiver_id: Int,
+    val message_type: String,
+    val vanish_mode: Boolean
+)
+
+data class GetMessagesRequest(
+    val auth_token: String,
+    val other_user_id: Int,
+    val last_message_id: Int = 0
+)
+
+data class MessageItem(
+    val message_id: Int,
+    val sender_id: Int,
+    val receiver_id: Int,
+    val message_text: String?,
+    val message_type: String,
+    val media_base64: String?,
+    val file_name: String?,
+    val file_size: Int?,
+    val timestamp: Long,
+    val edited: Boolean,
+    val edited_at: Long?,
+    val is_deleted: Boolean,
+    val vanish_mode: Boolean,
+    val seen: Boolean,
+    val seen_at: Long?
+)
+
+data class GetMessagesResponse(
+    val messages: List<MessageItem>,
+    val thread_id: String,
+    val vanish_mode: Boolean,
+    val total: Int
+)
+
+data class EditMessageRequest(
+    val auth_token: String,
+    val message_id: Int,
+    val new_text: String
+)
+
+data class EditMessageResponse(
+    val message_id: Int,
+    val new_text: String,
+    val edited_at: Long
+)
+
+data class DeleteMessageRequest(
+    val auth_token: String,
+    val message_id: Int
+)
+
+data class DeleteMessageResponse(
+    val message_id: Int,
+    val deleted_at: Long
+)
+
+data class ToggleVanishModeRequest(
+    val auth_token: String,
+    val other_user_id: Int,
+    val vanish_mode: Boolean
+)
+
+data class ToggleVanishModeResponse(
+    val thread_id: String,
+    val vanish_mode: Boolean
+)
+
+data class ClearVanishMessagesRequest(
+    val auth_token: String,
+    val other_user_id: Int
+)
+
+data class ClearVanishMessagesResponse(
+    val thread_id: String,
+    val deleted_count: Int
+)

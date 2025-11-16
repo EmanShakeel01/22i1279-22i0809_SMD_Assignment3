@@ -10,33 +10,30 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.FEdev.i221279_i220809.models.SearchUsersRequest
+import com.FEdev.i221279_i220809.models.SearchUserResult
+import com.FEdev.i221279_i220809.models.GetMultipleStatusesRequest
+import com.FEdev.i221279_i220809.network.RetrofitClient
+import com.FEdev.i221279_i220809.utils.SessionManager
+import kotlinx.coroutines.launch
 
 class chatlist : AppCompatActivity() {
 
     private lateinit var usersRecycler: RecyclerView
     private lateinit var searchInput: EditText
     private lateinit var adapter: ChatUserAdapter
+    private lateinit var sessionManager: SessionManager
 
-    private val rtdb = FirebaseDatabase.getInstance(
-        "https://i1279-22i0809-assignment2-default-rtdb.firebaseio.com/"
-    ).reference
-
-    private val allUsers = mutableListOf<User>()
-    private val conversationsMap = mutableMapOf<String, ConversationData>()
-
-    private var currentUid: String = ""
-    private var usersListener: ValueEventListener? = null
+    private val allUsers = mutableListOf<ChatUser>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chatlist)
 
-        currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-        Log.d("ChatList", "Current UID: $currentUid")
+        sessionManager = SessionManager(this)
 
         findViewById<ImageView>(R.id.back).setOnClickListener { finish() }
 
@@ -47,149 +44,159 @@ class chatlist : AppCompatActivity() {
 
         searchInput = findViewById(R.id.search_message)
         searchInput.setOnFocusChangeListener { _: View, hasFocus: Boolean ->
-            if (hasFocus && searchInput.text.isNullOrBlank()) filterUsers("")
+            if (hasFocus && searchInput.text.isNullOrBlank()) {
+                // Clear results when focused with empty text
+                adapter.update(emptyList())
+            }
         }
+
         searchInput.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) = Unit
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val query = s?.toString().orEmpty()
-                filterUsers(query)
+                val query = s?.toString().orEmpty().trim()
+                if (query.length >= 2) {
+                    searchUsers(query)
+                } else if (query.isEmpty()) {
+                    // Clear results when search is empty
+                    allUsers.clear()
+                    adapter.update(emptyList())
+                }
             }
         })
 
-        attachUsersListener()
-        listenToConversations()
+        Log.d("ChatList", "Chat list initialized")
+    }
+
+    private fun searchUsers(query: String) {
+        val authToken = sessionManager.getAuthToken()
+
+        if (authToken == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val request = SearchUsersRequest(
+                    auth_token = authToken,
+                    search_query = query
+                )
+
+                val response = RetrofitClient.apiService.searchUsers(request)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+
+                    if (data != null) {
+                        allUsers.clear()
+
+                        // Convert SearchUserResult to ChatUser
+                        val chatUsers = data.users.map { user ->
+                            ChatUser(
+                                userId = user.user_id,
+                                username = user.username,
+                                email = user.email,
+                                fullname = user.fullname,
+                                isOnline = false, // Will be updated from status API
+                                lastMessage = null,
+                                lastMessageTime = null,
+                                unreadCount = 0
+                            )
+                        }
+
+                        allUsers.addAll(chatUsers)
+
+                        if (chatUsers.isEmpty()) {
+                            adapter.update(emptyList())
+                            Toast.makeText(
+                                this@chatlist,
+                                "No users found for \"$query\"",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            // Fetch online statuses for the users
+                            fetchUserStatuses(chatUsers)
+                        }
+
+                        Log.d("ChatList", "✅ Found ${data.total} users")
+                    }
+                } else {
+                    Log.e("ChatList", "Search failed: ${response.body()?.message}")
+                    Toast.makeText(
+                        this@chatlist,
+                        response.body()?.message ?: "Search failed",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Log.e("ChatList", "Error searching users: ${e.message}", e)
+                Toast.makeText(
+                    this@chatlist,
+                    "Network error",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun fetchUserStatuses(users: List<ChatUser>) {
+        val authToken = sessionManager.getAuthToken() ?: return
+
+        if (users.isEmpty()) return
+
+        lifecycleScope.launch {
+            try {
+                val userIds = users.map { it.userId }
+                val request = GetMultipleStatusesRequest(
+                    auth_token = authToken,
+                    user_ids = userIds
+                )
+
+                val response = RetrofitClient.apiService.getMultipleUserStatuses(request)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val statusData = response.body()?.data?.statuses
+
+                    if (statusData != null) {
+                        // Update online status for each user
+                        statusData.forEach { status ->
+                            allUsers.find { it.userId == status.user_id }?.isOnline = status.is_online
+                        }
+
+                        // Update adapter
+                        adapter.update(allUsers)
+
+                        Log.d("ChatList", "✅ Updated statuses for ${statusData.size} users")
+                    }
+                } else {
+                    // Even if status fetch fails, show the users
+                    adapter.update(allUsers)
+                    Log.e("ChatList", "Failed to fetch statuses: ${response.body()?.message}")
+                }
+            } catch (e: Exception) {
+                // Even if status fetch fails, show the users
+                adapter.update(allUsers)
+                Log.e("ChatList", "Error fetching statuses: ${e.message}", e)
+            }
+        }
+    }
+
+    private fun openChat(user: ChatUser) {
+        Log.d("ChatList", "Opening chat with ${user.username} (ID: ${user.userId})")
+
+        val intent = Intent(this, ChatInboxActivity::class.java).apply {
+            putExtra("targetUid", user.userId.toString())
+            putExtra("targetName", user.username)
+            putExtra("targetEmail", user.email)
+            putExtra("targetFullname", user.fullname)
+        }
+        startActivity(intent)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        usersListener?.let { rtdb.child("users").removeEventListener(it) }
-    }
-
-    private fun attachUsersListener() {
-        val ref = rtdb.child("users")
-        usersListener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                allUsers.clear()
-
-                for (child in snapshot.children) {
-                    val uid = child.child("uid").getValue(String::class.java)?.trim() ?: ""
-                    val email = child.child("email").getValue(String::class.java)?.trim() ?: ""
-                    val username = child.child("username").getValue(String::class.java)?.trim() ?: ""
-
-                    if (uid.isEmpty() || uid == currentUid) continue
-
-                    val displayName = if (username.isNotEmpty()) username else email.substringBefore("@")
-
-                    allUsers.add(
-                        User(
-                            uid = uid,
-                            name = displayName,
-                            email = email,
-                            avatarUrl = null,
-                            nameLower = displayName.lowercase()
-                        )
-                    )
-                }
-
-                Log.d("ChatList", "Total users loaded: ${allUsers.size}")
-                filterUsers(searchInput.text?.toString().orEmpty())
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("ChatList", "Firebase error: ${error.message}")
-                Toast.makeText(this@chatlist, "Error loading users: ${error.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-        ref.addValueEventListener(usersListener as ValueEventListener)
-    }
-
-    private fun listenToConversations() {
-        rtdb.child("chats").addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                conversationsMap.clear()
-
-                for (chatSnapshot in snapshot.children) {
-                    val chatId = chatSnapshot.key ?: continue
-
-                    // Extract the other user's UID from chatId (format: uid1_uid2)
-                    val parts = chatId.split("_")
-                    if (parts.size != 2) continue
-
-                    val otherUid = when {
-                        parts[0] == currentUid -> parts[1]
-                        parts[1] == currentUid -> parts[0]
-                        else -> continue
-                    }
-
-                    // Get the last message from this conversation
-                    val messagesSnapshot = chatSnapshot.child("messages")
-                    if (messagesSnapshot.exists()) {
-                        var lastMsg: Message? = null
-                        var latestTimestamp = 0L
-
-                        for (msgSnapshot in messagesSnapshot.children) {
-                            val msg = msgSnapshot.getValue(Message::class.java)
-                            if (msg != null && msg.timestamp > latestTimestamp) {
-                                lastMsg = msg
-                                latestTimestamp = msg.timestamp
-                            }
-                        }
-
-                        if (lastMsg != null) {
-                            conversationsMap[otherUid] = ConversationData(
-                                lastMessage = lastMsg.messageText ?: "[Image]",
-                                timestamp = lastMsg.timestamp,
-                                unread = lastMsg.senderId != currentUid
-                            )
-                        }
-                    }
-                }
-
-                Log.d("ChatList", "Conversations loaded: ${conversationsMap.size}")
-                filterUsers(searchInput.text?.toString().orEmpty())
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("ChatList", "Error loading conversations: ${error.message}")
-            }
-        })
-    }
-
-    private fun filterUsers(query: String) {
-        val q = query.trim().lowercase()
-
-        val filteredUsers = if (q.isBlank()) {
-            allUsers
-        } else {
-            allUsers.filter { u ->
-                u.nameLower.contains(q) || (u.email?.lowercase()?.contains(q) == true)
-            }
-        }
-
-        // Sort users: those with conversations first, sorted by most recent
-        val sorted = filteredUsers.sortedByDescending { user ->
-            conversationsMap[user.uid]?.timestamp ?: 0L
-        }
-
-        Log.d("ChatList", "Filtered results: ${sorted.size} users")
-        adapter.update(sorted)
-    }
-
-    private fun openChat(user: User) {
-        Log.d("ChatList", "Opening chat with ${user.name} (${user.uid})")
-        val intent = Intent(this, ChatInboxActivity::class.java).apply {
-            putExtra("targetUid", user.uid)
-            putExtra("targetName", user.name)
-            putExtra("targetAvatarUrl", user.avatarUrl)
-        }
-        startActivity(intent)
+        Log.d("ChatList", "Chat list destroyed")
     }
 }
 
-data class ConversationData(
-    val lastMessage: String,
-    val timestamp: Long,
-    val unread: Boolean
-)
