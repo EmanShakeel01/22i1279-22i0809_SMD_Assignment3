@@ -36,7 +36,7 @@
                 <!-- Top Bar -->
                 <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="45dp"
+                    android:layout_height="65dp"
                     android:padding="8dp">
 
                     <TextView
@@ -51,6 +51,7 @@
 
                     <ImageView
                         android:id="@+id/menu"
+                        android:layout_marginTop="20dp"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_alignParentEnd="true"
