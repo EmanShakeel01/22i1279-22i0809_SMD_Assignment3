@@ -28,6 +28,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme._22i127922i0809_Assignment2"
 
+
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config">
 

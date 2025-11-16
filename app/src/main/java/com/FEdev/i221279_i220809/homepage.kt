@@ -39,7 +39,7 @@ class homepage : AppCompatActivity() {
         Log.d("ActivityStack", "HomePage onCreate")
 
         sessionManager = SessionManager(this)
-        OnlineStatusManager.initializeStatus()
+        OnlineStatusManager.initializeStatus(sessionManager)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())

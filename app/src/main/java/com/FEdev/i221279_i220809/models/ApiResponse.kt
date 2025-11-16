@@ -48,7 +48,6 @@ data class Story(
     val expires_at: Long
 )
 
-
 data class MyStoriesRequest(
     val auth_token: String
 )
@@ -74,7 +73,6 @@ data class StoryData(
     val count: Int,
     val username: String
 )
-
 
 data class AllStoriesRequest(
     val auth_token: String
@@ -115,9 +113,9 @@ data class Post(
     val caption: String,
     val image_base64: String,
     val timestamp: Long,
-    var like_count: Int,        // ✅ Changed to var
-    var comment_count: Int,     // ✅ Changed to var
-    var is_liked: Boolean       // ✅ Changed to var
+    var like_count: Int,
+    var comment_count: Int,
+    var is_liked: Boolean
 )
 
 data class GetPostsResponse(
@@ -164,4 +162,129 @@ data class Comment(
 data class GetCommentsResponse(
     val comments: List<Comment>,
     val total: Int
+)
+
+// Search models
+data class SearchUsersRequest(
+    val auth_token: String,
+    val search_query: String
+)
+
+data class SearchUserResult(
+    val user_id: Int,
+    val username: String,
+    val email: String,
+    val fullname: String?
+)
+
+data class SearchUsersResponse(
+    val users: List<SearchUserResult>,
+    val total: Int,
+    val query: String
+)
+
+data class GetUserProfileRequest(
+    val auth_token: String,
+    val user_id: Int
+)
+
+data class UserProfile(
+    val user_id: Int,
+    val username: String,
+    val email: String,
+    val fullname: String?,
+    val bio: String?,
+    val profile_image: String?,
+    val post_count: Int
+)
+
+data class GetUserProfileResponse(
+    val user: UserProfile
+)
+
+// Follow Request Models
+data class GetFollowRequestsRequest(
+    val auth_token: String
+)
+
+data class FollowRequestItem(
+    val request_id: Int,
+    val follower_id: Int,
+    val username: String,
+    val email: String,
+    val created_at: Long
+)
+data class GetFollowRequestsResponse(
+    val requests: List<FollowRequestItem>,
+    val total: Int
+)
+data class SendFollowRequestRequest(
+    val auth_token: String,
+    val target_user_id: Int
+)
+
+data class SendFollowRequestResponse(
+    val success: Boolean,
+    val message: String
+)
+
+// ✅ FIXED: Removed 'status' parameter from the REQUEST
+data class CheckFollowStatusRequest(
+    val auth_token: String,
+    val target_user_id: Int
+)
+
+data class CheckFollowStatusResponse(
+    val status: String // "none", "pending", "accepted"
+)
+
+
+
+
+data class AcceptFollowRequestRequest(
+    val auth_token: String,
+    val request_id: Int
+)
+
+data class RejectFollowRequestRequest(
+    val auth_token: String,
+    val request_id: Int
+)
+
+
+// Status update request/response
+data class UpdateStatusRequest(
+    val auth_token: String,
+    val status: String // "online" or "offline"
+)
+
+data class UpdateStatusResponse(
+    val user_id: Int,
+    val status: String,
+    val last_seen: Long
+)
+
+// Get user status
+data class GetUserStatusRequest(
+    val auth_token: String,
+    val target_user_id: Int
+)
+
+data class UserStatusData(
+    val user_id: Int,
+    val username: String,
+    val status: String,
+    val last_seen: Long?,
+    val is_online: Boolean
+)
+
+// Get multiple statuses
+data class GetMultipleStatusesRequest(
+    val auth_token: String,
+    val user_ids: List<Int>
+)
+
+data class GetMultipleStatusesResponse(
+    val statuses: List<UserStatusData>,
+    val count: Int
 )

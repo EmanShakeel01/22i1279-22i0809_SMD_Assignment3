@@ -44,4 +44,38 @@ interface ApiService {
 
     @POST("get_comments.php")
     suspend fun getComments(@Body request: GetCommentsRequest): Response<ApiResponse<GetCommentsResponse>>
+
+    // Search endpoints
+    @POST("search_users.php")
+    suspend fun searchUsers(@Body request: SearchUsersRequest): Response<ApiResponse<SearchUsersResponse>>
+
+    @POST("get_user_profile.php")
+    suspend fun getUserProfile(@Body request: GetUserProfileRequest): Response<ApiResponse<GetUserProfileResponse>>
+
+
+        @POST("send_follow_request.php")
+        suspend fun sendFollowRequest(@Body request: SendFollowRequestRequest): Response<ApiResponse<Map<String, Any>>>
+
+        @POST("get_follow_requests.php")
+        suspend fun getFollowRequests(@Body request: GetFollowRequestsRequest): Response<ApiResponse<GetFollowRequestsResponse>>
+
+        @POST("accept_follow_request.php")
+        suspend fun acceptFollowRequest(@Body request: AcceptFollowRequestRequest): Response<ApiResponse<Map<String, String>>>
+
+        @POST("reject_follow_request.php")
+        suspend fun rejectFollowRequest(@Body request: RejectFollowRequestRequest): Response<ApiResponse<Map<String, String>>>
+
+    @POST("check_follow_status.php")
+    suspend fun checkFollowStatus(
+        @Body request: CheckFollowStatusRequest
+    ): Response<ApiResponse<CheckFollowStatusResponse>>
+
+    @POST("update_status.php")
+    suspend fun updateStatus(@Body request: UpdateStatusRequest): Response<ApiResponse<UpdateStatusResponse>>
+
+    @POST("get_user_status.php")
+    suspend fun getUserStatus(@Body request: GetUserStatusRequest): Response<ApiResponse<UserStatusData>>
+
+    @POST("get_multiple_user_statuses.php")
+    suspend fun getMultipleUserStatuses(@Body request: GetMultipleStatusesRequest): Response<ApiResponse<GetMultipleStatusesResponse>>
 }

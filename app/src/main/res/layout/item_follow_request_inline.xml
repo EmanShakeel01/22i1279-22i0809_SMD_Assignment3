@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="8dp"
+    android:padding="12dp"
     android:background="?attr/selectableItemBackground">
 
     <de.hdodenhof.circleimageview.CircleImageView
@@ -29,36 +29,35 @@
             android:layout_height="wrap_content"
             android:text="username wants to follow you"
             android:textSize="14sp"
-            android:textColor="@android:color/black"
-            android:textStyle="normal" />
+            android:textColor="@android:color/black" />
 
+        <TextView
+            android:id="@+id/requestTimestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2h ago"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:layout_marginTop="2dp" />
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
+    <Button
+        android:id="@+id/acceptButton"
+        android:layout_width="80dp"
+        android:layout_height="36dp"
+        android:text="Accept"
+        android:textSize="12sp"
+        android:backgroundTint="@color/pink"
+        android:textColor="@android:color/white"
+        android:layout_marginEnd="8dp" />
 
-        <Button
-            android:id="@+id/acceptButton"
-            android:layout_width="80dp"
-            android:layout_height="35dp"
-            android:text="Accept"
-            android:textSize="11sp"
-            android:textAllCaps="false"
-            android:backgroundTint="@color/pink"
-            android:textColor="@android:color/white"
-            android:layout_marginEnd="6dp" />
-
-        <Button
-            android:id="@+id/rejectButton"
-            android:layout_width="80dp"
-            android:layout_height="35dp"
-            android:text="Reject"
-            android:textSize="11sp"
-            android:textAllCaps="false"
-            android:backgroundTint="@android:color/darker_gray"
-            android:textColor="@android:color/white" />
-    </LinearLayout>
+    <Button
+        android:id="@+id/rejectButton"
+        android:layout_width="80dp"
+        android:layout_height="36dp"
+        android:text="Reject"
+        android:textSize="12sp"
+        android:backgroundTint="@android:color/darker_gray"
+        android:textColor="@android:color/white" />
 
 </LinearLayout>
