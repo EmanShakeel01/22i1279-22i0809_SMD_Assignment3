@@ -402,3 +402,24 @@ data class ClearVanishMessagesResponse(
     val thread_id: String,
     val deleted_count: Int
 )
+
+data class GetChatThreadsRequest(
+    val auth_token: String
+)
+
+data class ChatThread(
+    val thread_id: String,
+    val other_user_id: Int,
+    val other_username: String,
+    val other_email: String,
+    val last_message_preview: String,
+    val last_message_type: String?,
+    val last_message_timestamp: Long?,
+    val unread_count: Int,
+    val vanish_mode: Boolean
+)
+
+data class GetChatThreadsResponse(
+    val threads: List<ChatThread>,
+    val total: Int
+)

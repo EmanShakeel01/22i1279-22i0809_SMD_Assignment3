@@ -30,6 +30,9 @@
         android:theme="@style/Theme._22i127922i0809_Assignment2"
         android:usesCleartextTraffic="true">
         <activity
+            android:name=".utils.ChatThreadAdapter"
+            android:exported="false" />
+        <activity
             android:name=".NewChatAdapter"
             android:exported="false" />
         <activity

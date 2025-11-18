@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="12dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Avatar -->
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/threadAvatar"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:src="@drawable/mystory"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Online/Offline Status Indicator -->
+    <View
+        android:id="@+id/threadStatusIndicator"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:background="@drawable/status_dot_online"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/threadAvatar"
+        app:layout_constraintEnd_toEndOf="@id/threadAvatar" />
+
+    <!-- Username -->
+    <TextView
+        android:id="@+id/threadUsername"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Username"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintStart_toEndOf="@id/threadAvatar"
+        app:layout_constraintTop_toTopOf="@id/threadAvatar"
+        app:layout_constraintEnd_toStartOf="@id/threadTimestamp" />
+
+    <!-- Last Message -->
+    <TextView
+        android:id="@+id/threadLastMessage"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Last message preview..."
+        android:textSize="14sp"
+        android:textColor="@android:color/darker_gray"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintStart_toStartOf="@id/threadUsername"
+        app:layout_constraintTop_toBottomOf="@id/threadUsername"
+        app:layout_constraintEnd_toStartOf="@id/threadUnreadBadge"
+        app:layout_constraintBottom_toBottomOf="@id/threadAvatar" />
+
+    <!-- Vanish Mode Indicator -->
+    <ImageView
+        android:id="@+id/threadVanishIndicator"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:src="@drawable/ic_vanish_on"
+        android:visibility="gone"
+        android:layout_marginStart="4dp"
+        app:tint="@color/red"
+        app:layout_constraintStart_toEndOf="@id/threadLastMessage"
+        app:layout_constraintTop_toTopOf="@id/threadLastMessage" />
+
+    <!-- Timestamp -->
+    <TextView
+        android:id="@+id/threadTimestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2h"
+        android:textSize="12sp"
+        android:textColor="@android:color/darker_gray"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/threadAvatar" />
+
+    <!-- Unread Badge -->
+    <TextView
+        android:id="@+id/threadUnreadBadge"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:text="3"
+        android:textSize="12sp"
+        android:textColor="@android:color/white"
+        android:background="@drawable/unread_badge_background"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/threadTimestamp"
+        android:layout_marginTop="8dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

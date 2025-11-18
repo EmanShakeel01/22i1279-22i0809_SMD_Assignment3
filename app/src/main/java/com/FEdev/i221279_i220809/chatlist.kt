@@ -8,26 +8,41 @@ import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.FEdev.i221279_i220809.models.SearchUsersRequest
-import com.FEdev.i221279_i220809.models.SearchUserResult
-import com.FEdev.i221279_i220809.models.GetMultipleStatusesRequest
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.FEdev.i221279_i220809.models.*
 import com.FEdev.i221279_i220809.network.RetrofitClient
 import com.FEdev.i221279_i220809.utils.SessionManager
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class chatlist : AppCompatActivity() {
 
-    private lateinit var usersRecycler: RecyclerView
     private lateinit var searchInput: EditText
-    private lateinit var adapter: ChatUserAdapter
-    private lateinit var sessionManager: SessionManager
+    private lateinit var backButton: ImageView
+    private lateinit var clearSearchButton: ImageView
+    private lateinit var threadsRecycler: RecyclerView
+    private lateinit var searchResultsRecycler: RecyclerView
+    private lateinit var swipeRefresh: SwipeRefreshLayout
+    private lateinit var emptyStateView: TextView
+    private lateinit var loadingIndicator: ProgressBar
 
-    private val allUsers = mutableListOf<ChatUser>()
+    private lateinit var sessionManager: SessionManager
+    private lateinit var threadsAdapter: ChatThreadAdapter
+    private lateinit var searchAdapter: SearchResultsAdapter
+
+    private val chatThreads = mutableListOf<ChatThread>()
+    private val searchResults = mutableListOf<SearchUserResult>()
+
+    private var autoRefreshJob: Job? = null
+    private var isSearching = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,38 +50,169 @@ class chatlist : AppCompatActivity() {
 
         sessionManager = SessionManager(this)
 
-        findViewById<ImageView>(R.id.back).setOnClickListener { finish() }
+        initViews()
+        setupRecyclers()
+        setupSearch()
+        setupSwipeRefresh()
 
-        usersRecycler = findViewById(R.id.usersRecycler)
-        usersRecycler.layoutManager = LinearLayoutManager(this)
-        adapter = ChatUserAdapter(mutableListOf()) { user -> openChat(user) }
-        usersRecycler.adapter = adapter
+        loadChatThreads()
+        startAutoRefresh()
 
+        Log.d("ChatList", "Chat list initialized")
+    }
+
+    private fun initViews() {
         searchInput = findViewById(R.id.search_message)
-        searchInput.setOnFocusChangeListener { _: View, hasFocus: Boolean ->
-            if (hasFocus && searchInput.text.isNullOrBlank()) {
-                // Clear results when focused with empty text
-                adapter.update(emptyList())
-            }
+        backButton = findViewById(R.id.back)
+        clearSearchButton = findViewById(R.id.clearSearch)
+        threadsRecycler = findViewById(R.id.threadsRecycler)
+        searchResultsRecycler = findViewById(R.id.searchResultsRecycler)
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+        emptyStateView = findViewById(R.id.emptyStateText)
+        loadingIndicator = findViewById(R.id.loadingIndicator)
+
+        backButton.setOnClickListener { finish() }
+        clearSearchButton.setOnClickListener {
+            searchInput.text.clear()
+            hideSearch()
         }
 
+        // Initially hide search results and clear button
+        searchResultsRecycler.visibility = View.GONE
+        clearSearchButton.visibility = View.GONE
+    }
+
+    private fun setupRecyclers() {
+        // Chat threads recycler
+        threadsAdapter = ChatThreadAdapter(chatThreads) { thread ->
+            openChat(thread)
+        }
+        threadsRecycler.layoutManager = LinearLayoutManager(this)
+        threadsRecycler.adapter = threadsAdapter
+
+        // Search results recycler
+        searchAdapter = SearchResultsAdapter(searchResults) { user ->
+            openChatWithUser(user)
+        }
+        searchResultsRecycler.layoutManager = LinearLayoutManager(this)
+        searchResultsRecycler.adapter = searchAdapter
+    }
+
+    private fun setupSearch() {
         searchInput.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) = Unit
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val query = s?.toString().orEmpty().trim()
-                if (query.length >= 2) {
-                    searchUsers(query)
-                } else if (query.isEmpty()) {
-                    // Clear results when search is empty
-                    allUsers.clear()
-                    adapter.update(emptyList())
+
+                if (query.isEmpty()) {
+                    hideSearch()
+                } else {
+                    clearSearchButton.visibility = View.VISIBLE
+                    if (query.length >= 2) {
+                        showSearch()
+                        searchUsers(query)
+                    }
                 }
             }
         })
 
-        Log.d("ChatList", "Chat list initialized")
+        searchInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && searchInput.text.toString().trim().length >= 2) {
+                showSearch()
+            }
+        }
     }
+
+    private fun setupSwipeRefresh() {
+        swipeRefresh.setOnRefreshListener {
+            loadChatThreads()
+        }
+
+        swipeRefresh.setColorSchemeResources(
+            R.color.pink,
+            R.color.red,
+            R.color.darkbrown
+        )
+    }
+
+    // ==================== LOAD CHAT THREADS ====================
+
+    private fun loadChatThreads() {
+        val authToken = sessionManager.getAuthToken()
+
+        if (authToken == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
+            swipeRefresh.isRefreshing = false
+            return
+        }
+
+        if (!swipeRefresh.isRefreshing) {
+            loadingIndicator.visibility = View.VISIBLE
+        }
+
+        lifecycleScope.launch {
+            try {
+                val request = GetChatThreadsRequest(auth_token = authToken)
+                val response = RetrofitClient.apiService.getChatThreads(request)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+
+                    if (data != null) {
+                        chatThreads.clear()
+                        chatThreads.addAll(data.threads)
+                        threadsAdapter.notifyDataSetChanged()
+
+                        // Show/hide empty state
+                        if (chatThreads.isEmpty()) {
+                            emptyStateView.visibility = View.VISIBLE
+                            emptyStateView.text = "No conversations yet\nSearch for users to start chatting"
+                            threadsRecycler.visibility = View.GONE
+                        } else {
+                            emptyStateView.visibility = View.GONE
+                            threadsRecycler.visibility = View.VISIBLE
+                        }
+
+                        Log.d("ChatList", "✅ Loaded ${data.total} chat threads")
+                    }
+                } else {
+                    Log.e("ChatList", "Failed to load threads: ${response.body()?.message}")
+                    Toast.makeText(
+                        this@chatlist,
+                        response.body()?.message ?: "Failed to load chats",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Log.e("ChatList", "Error loading threads: ${e.message}", e)
+                Toast.makeText(
+                    this@chatlist,
+                    "Network error",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                swipeRefresh.isRefreshing = false
+                loadingIndicator.visibility = View.GONE
+            }
+        }
+    }
+
+    // ==================== AUTO REFRESH ====================
+
+    private fun startAutoRefresh() {
+        autoRefreshJob = lifecycleScope.launch {
+            while (true) {
+                delay(10000) // Refresh every 10 seconds
+                if (!isSearching && !swipeRefresh.isRefreshing) {
+                    loadChatThreads()
+                }
+            }
+        }
+    }
+
+    // ==================== SEARCH USERS ====================
 
     private fun searchUsers(query: String) {
         val authToken = sessionManager.getAuthToken()
@@ -75,6 +221,8 @@ class chatlist : AppCompatActivity() {
             Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
             return
         }
+
+        isSearching = true
 
         lifecycleScope.launch {
             try {
@@ -89,65 +237,43 @@ class chatlist : AppCompatActivity() {
                     val data = response.body()?.data
 
                     if (data != null) {
-                        allUsers.clear()
+                        searchResults.clear()
+                        searchResults.addAll(data.users)
+                        searchAdapter.notifyDataSetChanged()
 
-                        // Convert SearchUserResult to ChatUser
-                        val chatUsers = data.users.map { user ->
-                            ChatUser(
-                                userId = user.user_id,
-                                username = user.username,
-                                email = user.email,
-                                fullname = user.fullname,
-                                isOnline = false, // Will be updated from status API
-                                lastMessage = null,
-                                lastMessageTime = null,
-                                unreadCount = 0
-                            )
-                        }
-
-                        allUsers.addAll(chatUsers)
-
-                        if (chatUsers.isEmpty()) {
-                            adapter.update(emptyList())
-                            Toast.makeText(
-                                this@chatlist,
-                                "No users found for \"$query\"",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                        if (searchResults.isEmpty()) {
+                            emptyStateView.visibility = View.VISIBLE
+                            emptyStateView.text = "No users found for \"$query\""
+                            searchResultsRecycler.visibility = View.GONE
                         } else {
-                            // Fetch online statuses for the users
-                            fetchUserStatuses(chatUsers)
+                            emptyStateView.visibility = View.GONE
+                            searchResultsRecycler.visibility = View.VISIBLE
+
+                            // Fetch online statuses
+                            fetchUserStatuses()
                         }
 
                         Log.d("ChatList", "✅ Found ${data.total} users")
                     }
                 } else {
                     Log.e("ChatList", "Search failed: ${response.body()?.message}")
-                    Toast.makeText(
-                        this@chatlist,
-                        response.body()?.message ?: "Search failed",
-                        Toast.LENGTH_SHORT
-                    ).show()
                 }
             } catch (e: Exception) {
                 Log.e("ChatList", "Error searching users: ${e.message}", e)
-                Toast.makeText(
-                    this@chatlist,
-                    "Network error",
-                    Toast.LENGTH_SHORT
-                ).show()
+            } finally {
+                isSearching = false
             }
         }
     }
 
-    private fun fetchUserStatuses(users: List<ChatUser>) {
+    private fun fetchUserStatuses() {
         val authToken = sessionManager.getAuthToken() ?: return
 
-        if (users.isEmpty()) return
+        if (searchResults.isEmpty()) return
 
         lifecycleScope.launch {
             try {
-                val userIds = users.map { it.userId }
+                val userIds = searchResults.map { it.user_id }
                 val request = GetMultipleStatusesRequest(
                     auth_token = authToken,
                     user_ids = userIds
@@ -159,44 +285,87 @@ class chatlist : AppCompatActivity() {
                     val statusData = response.body()?.data?.statuses
 
                     if (statusData != null) {
-                        // Update online status for each user
-                        statusData.forEach { status ->
-                            allUsers.find { it.userId == status.user_id }?.isOnline = status.is_online
+                        val statusMap = statusData.associate {
+                            it.user_id to it.is_online
                         }
 
-                        // Update adapter
-                        adapter.update(allUsers)
-
+                        searchAdapter.updateStatuses(statusMap)
                         Log.d("ChatList", "✅ Updated statuses for ${statusData.size} users")
                     }
-                } else {
-                    // Even if status fetch fails, show the users
-                    adapter.update(allUsers)
-                    Log.e("ChatList", "Failed to fetch statuses: ${response.body()?.message}")
                 }
             } catch (e: Exception) {
-                // Even if status fetch fails, show the users
-                adapter.update(allUsers)
                 Log.e("ChatList", "Error fetching statuses: ${e.message}", e)
             }
         }
     }
 
-    private fun openChat(user: ChatUser) {
-        Log.d("ChatList", "Opening chat with ${user.username} (ID: ${user.userId})")
+    // ==================== NAVIGATION ====================
+
+    private fun openChat(thread: ChatThread) {
+        Log.d("ChatList", "Opening chat with ${thread.other_username} (ID: ${thread.other_user_id})")
 
         val intent = Intent(this, ChatInboxActivity::class.java).apply {
-            putExtra("targetUid", user.userId.toString())
+            putExtra("targetUserId", thread.other_user_id)
+            putExtra("targetName", thread.other_username)
+            putExtra("targetEmail", thread.other_email)
+        }
+        startActivity(intent)
+    }
+
+    private fun openChatWithUser(user: SearchUserResult) {
+        Log.d("ChatList", "Opening chat with ${user.username} (ID: ${user.user_id})")
+
+        val intent = Intent(this, ChatInboxActivity::class.java).apply {
+            putExtra("targetUserId", user.user_id)
             putExtra("targetName", user.username)
             putExtra("targetEmail", user.email)
             putExtra("targetFullname", user.fullname)
         }
         startActivity(intent)
+
+        // Hide search after opening chat
+        hideSearch()
+    }
+
+    // ==================== SHOW/HIDE SEARCH ====================
+
+    private fun showSearch() {
+        threadsRecycler.visibility = View.GONE
+        searchResultsRecycler.visibility = View.VISIBLE
+        emptyStateView.visibility = View.GONE
+    }
+
+    private fun hideSearch() {
+        searchInput.text.clear()
+        searchResults.clear()
+        searchAdapter.notifyDataSetChanged()
+
+        searchResultsRecycler.visibility = View.GONE
+        clearSearchButton.visibility = View.GONE
+
+        if (chatThreads.isEmpty()) {
+            emptyStateView.visibility = View.VISIBLE
+            emptyStateView.text = "No conversations yet\nSearch for users to start chatting"
+            threadsRecycler.visibility = View.GONE
+        } else {
+            emptyStateView.visibility = View.GONE
+            threadsRecycler.visibility = View.VISIBLE
+        }
+
+        searchInput.clearFocus()
+    }
+
+    // ==================== LIFECYCLE ====================
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh threads when returning to this screen
+        loadChatThreads()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        autoRefreshJob?.cancel()
         Log.d("ChatList", "Chat list destroyed")
     }
 }
-

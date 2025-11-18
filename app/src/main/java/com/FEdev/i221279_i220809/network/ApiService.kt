@@ -113,6 +113,7 @@ interface ApiService {
     @POST("clear_vanish_messages.php")
     suspend fun clearVanishMessages(@Body request: ClearVanishMessagesRequest): Response<ApiResponse<ClearVanishMessagesResponse>>
 
-
+    @POST("get_chat_threads.php")
+    suspend fun getChatThreads(@Body request: GetChatThreadsRequest): Response<ApiResponse<GetChatThreadsResponse>>
 
 }
