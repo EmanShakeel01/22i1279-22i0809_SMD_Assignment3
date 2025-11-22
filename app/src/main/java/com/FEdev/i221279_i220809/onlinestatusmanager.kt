@@ -58,14 +58,21 @@ object OnlineStatusManager {
         statusUpdateJob?.cancel()
 
         statusUpdateJob = CoroutineScope(Dispatchers.IO).launch {
-            while (isActive) {
-                try {
-                    updateStatus("online")
-                    delay(STATUS_UPDATE_INTERVAL)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error in periodic update: ${e.message}")
-                    delay(STATUS_UPDATE_INTERVAL)
+            try {
+                while (isActive) {
+                    try {
+                        updateStatus("online")
+                        delay(STATUS_UPDATE_INTERVAL)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        Log.d(TAG, "Status update cancelled")
+                        break
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating status: ${e.message}")
+                        delay(STATUS_UPDATE_INTERVAL)
+                    }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "Periodic status updates cancelled")
             }
         }
 
@@ -77,7 +84,13 @@ object OnlineStatusManager {
      */
     fun setOnline() {
         CoroutineScope(Dispatchers.IO).launch {
-            updateStatus("online")
+            try {
+                updateStatus("online")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "Set online cancelled")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting online: ${e.message}")
+            }
         }
     }
 
@@ -86,7 +99,13 @@ object OnlineStatusManager {
      */
     fun setOffline() {
         CoroutineScope(Dispatchers.IO).launch {
-            updateStatus("offline")
+            try {
+                updateStatus("offline")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "Set offline cancelled")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting offline: ${e.message}")
+            }
         }
     }
 
@@ -164,6 +183,11 @@ object OnlineStatusManager {
                         callback(false, null)
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "Get user status cancelled")
+                withContext(Dispatchers.Main) {
+                    callback(false, null)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting user status: ${e.message}")
                 withContext(Dispatchers.Main) {
@@ -184,11 +208,15 @@ object OnlineStatusManager {
         callback: (Boolean, Long?) -> Unit
     ): Job {
         return CoroutineScope(Dispatchers.IO).launch {
-            while (isActive) {
-                getUserStatus(userId) { isOnline, lastSeen ->
-                    callback(isOnline, lastSeen)
+            try {
+                while (isActive) {
+                    getUserStatus(userId) { isOnline, lastSeen ->
+                        callback(isOnline, lastSeen)
+                    }
+                    delay(STATUS_CHECK_INTERVAL)
                 }
-                delay(STATUS_CHECK_INTERVAL)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "User status listening cancelled for user $userId")
             }
         }
     }
@@ -247,6 +275,11 @@ object OnlineStatusManager {
                     withContext(Dispatchers.Main) {
                         callback(emptyMap())
                     }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "Get multiple statuses cancelled")
+                withContext(Dispatchers.Main) {
+                    callback(emptyMap())
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting multiple statuses: ${e.message}")

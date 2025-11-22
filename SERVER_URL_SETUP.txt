@@ -1,0 +1,48 @@
+/**
+ * URGENT FIX: UPDATE YOUR SERVER URL TO PREVENT CRASHES
+ * ====================================================
+ * 
+ * The app is currently crashing due to hostname resolution issues.
+ * You MUST update the BASE_URL in RetrofitClient.kt with a working URL.
+ * 
+ * IMMEDIATE STEPS TO FIX:
+ * 
+ * 1. OPTION 1 - Use ngrok (Recommended for testing):
+ *    a) Open terminal/command prompt
+ *    b) Run: ngrok http 80 (or your local server port like 3000, 8080, etc.)
+ *    c) Copy the https URL (e.g., https://abc123-def456.ngrok-free.app)
+ *    d) In RetrofitClient.kt, replace BASE_URL with:
+ *       "https://YOUR_NGROK_URL.ngrok-free.app/socially_api/api/"
+ * 
+ * 2. OPTION 2 - Use local IP (For testing on same network):
+ *    a) Find your computer's IP address:
+ *       - Windows: Open cmd, run "ipconfig", look for IPv4 Address
+ *       - Mac/Linux: Open terminal, run "ifconfig", look for inet address
+ *    b) Example IP: 192.168.1.150
+ *    c) In RetrofitClient.kt, replace BASE_URL with:
+ *       "http://192.168.1.150/socially_api/api/" (use your actual IP)
+ * 
+ * 3. OPTION 3 - Use Android Emulator localhost:
+ *    a) If testing only on Android Emulator
+ *    b) In RetrofitClient.kt, replace BASE_URL with:
+ *       "http://10.0.2.2/socially_api/api/"
+ * 
+ * 4. OPTION 4 - Deploy to hosting service:
+ *    a) Deploy your PHP backend to hosting service (Heroku, DigitalOcean, etc.)
+ *    b) Use the production URL
+ * 
+ * CURRENT ISSUE:
+ * The hostname "unmatted-idolisingly-derick.ngrok-free.dev" cannot be resolved.
+ * This is likely because:
+ * - The ngrok tunnel has expired
+ * - The hostname has changed
+ * - Network connectivity issues
+ * 
+ * QUICK FIX:
+ * 1. Open: app/src/main/java/com/FEdev/i221279_i220809/network/RetrofitClient.kt
+ * 2. Find line: private const val BASE_URL = "https://unmatted-idolisingly-derick.ngrok-free.dev/socially_api/api/"
+ * 3. Replace with working URL from options above
+ * 4. Clean and rebuild the app
+ * 
+ * The app will work once you update the BASE_URL with a valid, reachable server URL.
+ */

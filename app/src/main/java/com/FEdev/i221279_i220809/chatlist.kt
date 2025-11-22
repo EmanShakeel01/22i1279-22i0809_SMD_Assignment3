@@ -218,6 +218,9 @@ class chatlist : AppCompatActivity() {
                         ).show()
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d("ChatList", "Load operation cancelled")
+                // Don't log as error for cancellation
             } catch (e: com.google.gson.JsonSyntaxException) {
                 Log.e("ChatList", "❌ JSON Parse Error: ${e.message}", e)
                 runOnUiThread {
@@ -249,12 +252,17 @@ class chatlist : AppCompatActivity() {
     // ==================== AUTO REFRESH ====================
 
     private fun startAutoRefresh() {
+        autoRefreshJob?.cancel() // Cancel any existing job
         autoRefreshJob = lifecycleScope.launch {
-            while (true) {
-                delay(10000) // Refresh every 10 seconds
-                if (!isSearching && !swipeRefresh.isRefreshing) {
-                    loadChatThreads()
+            try {
+                while (true) {
+                    delay(15000) // Increased to 15 seconds to reduce server load
+                    if (!isSearching && !swipeRefresh.isRefreshing && !isFinishing) {
+                        loadChatThreads()
+                    }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d("ChatList", "Auto refresh cancelled")
             }
         }
     }
@@ -304,6 +312,9 @@ class chatlist : AppCompatActivity() {
                 } else {
                     Log.e("ChatList", "Search failed: ${response.body()?.message}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d("ChatList", "Search operation cancelled")
+                // Don't log as error for cancellation
             } catch (e: Exception) {
                 Log.e("ChatList", "Error searching users: ${e.message}", e)
             } finally {
@@ -339,6 +350,8 @@ class chatlist : AppCompatActivity() {
                         Log.d("ChatList", "✅ Updated statuses for ${statusData.size} users")
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d("ChatList", "Status fetch cancelled")
             } catch (e: Exception) {
                 Log.e("ChatList", "Error fetching statuses: ${e.message}", e)
             }

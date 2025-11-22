@@ -56,6 +56,7 @@ class ChatInboxActivity : AppCompatActivity() {
     private val PICK_FILE_REQUEST = 3
 
     private var pollingJob: kotlinx.coroutines.Job? = null
+    private var isSendingMessage = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,7 +72,10 @@ class ChatInboxActivity : AppCompatActivity() {
         Log.d("ChatInbox", "Target Name: $targetName")
 
         if (currentUserId <= 0 || targetUserId <= 0) {
-            Log.e("ChatInbox", "❌ Invalid user data: currentUserId=$currentUserId, targetUserId=$targetUserId")
+            Log.e(
+                "ChatInbox",
+                "❌ Invalid user data: currentUserId=$currentUserId, targetUserId=$targetUserId"
+            )
             Toast.makeText(this, "Invalid user data", Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -97,8 +101,9 @@ class ChatInboxActivity : AppCompatActivity() {
 
         // Delay server fetch to ensure UI is ready
         lifecycleScope.launch {
-            delay(500)
+            delay(100) // Reduced delay for faster response
             fetchMessagesFromServer()
+            delay(1000) // Wait a bit before starting polling
             startMessagePolling()
             syncPendingMessages()
         }
@@ -155,8 +160,7 @@ class ChatInboxActivity : AppCompatActivity() {
             try {
                 val cachedMessages = messageDB.getMessages(threadId)
 
-                messages.clear()
-                messages.addAll(cachedMessages.map { cached ->
+                val newMessages = cachedMessages.map { cached ->
                     MessageItem(
                         message_id = cached.messageId,
                         sender_id = cached.senderId,
@@ -174,14 +178,36 @@ class ChatInboxActivity : AppCompatActivity() {
                         seen = cached.seen,
                         seen_at = cached.seenAt
                     )
-                })
+                }.sortedBy { it.timestamp }
 
                 runOnUiThread {
-                    adapter.notifyDataSetChanged()
-                    scrollToBottom()
+                    Log.d("ChatInbox", "Current messages in UI: ${messages.size}")
+                    Log.d("ChatInbox", "Messages from DB: ${newMessages.size}")
+
+                    // Only update if the message lists are actually different
+                    val shouldUpdate = messages.size != newMessages.size || 
+                        !messages.zip(newMessages).all { (current, new) -> 
+                            current.message_id == new.message_id && current.timestamp == new.timestamp
+                        }
+
+                    if (shouldUpdate) {
+                        Log.d("ChatInbox", "Updating UI with fresh message list")
+                        val scrollToEnd = recycler.canScrollVertically(1) == false || messages.isEmpty()
+                        
+                        messages.clear()
+                        messages.addAll(newMessages)
+                        adapter.notifyDataSetChanged()
+                        
+                        if (scrollToEnd) {
+                            scrollToBottom()
+                        }
+                        Log.d("ChatInbox", "UI updated. Messages now showing: ${messages.size}")
+                    } else {
+                        Log.d("ChatInbox", "No UI update needed - messages unchanged")
+                    }
                 }
 
-                Log.d("ChatInbox", "✅ Loaded ${messages.size} cached messages")
+                Log.d("ChatInbox", "✅ Loaded ${newMessages.size} cached messages")
             } catch (e: Exception) {
                 Log.e("ChatInbox", "❌ Error loading cached messages: ${e.message}", e)
             }
@@ -208,7 +234,7 @@ class ChatInboxActivity : AppCompatActivity() {
                 val request = GetMessagesRequest(
                     auth_token = authToken,
                     other_user_id = targetUserId,
-                    last_message_id = lastMessageId
+                    last_message_id = 0  // Always fetch all messages for simplicity
                 )
 
                 val response = RetrofitClient.apiService.getMessages(request)
@@ -236,26 +262,63 @@ class ChatInboxActivity : AppCompatActivity() {
                         vanishMode = data.vanish_mode
                         updateVanishModeUI()
 
-                        // Cache new messages
+                        // Cache new messages and check for duplicates
+                        var hasNewMessages = false
+                        val newServerMessages = mutableListOf<MessageItem>()
+                        
                         data.messages.forEach { msg ->
-                            cacheMessage(msg)
+                            // Check if message already exists in UI
+                            val existsInUI = messages.any { it.message_id == msg.message_id && msg.message_id > 0 }
+                            if (!existsInUI) {
+                                cacheMessage(msg)
+                                newServerMessages.add(msg)
+                                hasNewMessages = true
+                                Log.d("ChatInbox", "New message from server: ID=${msg.message_id}, from=${msg.sender_id}")
+                            }
 
                             if (msg.message_id > lastMessageId) {
                                 lastMessageId = msg.message_id
                             }
                         }
 
-                        // Reload from cache
-                        loadCachedMessages()
+                        // Check for new screenshot notifications and add as system messages
+                        checkForScreenshotNotifications()
+
+                        // If there are new messages, add them to UI immediately for better responsiveness
+                        if (hasNewMessages && newServerMessages.isNotEmpty()) {
+                            runOnUiThread {
+                                newServerMessages.sortedBy { it.timestamp }.forEach { newMsg ->
+                                    // Only add if it's truly new (double check)
+                                    val alreadyExists = messages.any { 
+                                        it.message_id == newMsg.message_id || 
+                                        (it.timestamp == newMsg.timestamp && it.sender_id == newMsg.sender_id)
+                                    }
+                                    if (!alreadyExists) {
+                                        messages.add(newMsg)
+                                        adapter.notifyItemInserted(messages.size - 1)
+                                        Log.d("ChatInbox", "Added new message to UI: ${newMsg.message_text}")
+                                    }
+                                }
+                                scrollToBottom()
+                            }
+                            Log.d("ChatInbox", "✅ UI updated with ${newServerMessages.size} new messages")
+                        }
                     } else {
                         Log.e("ChatInbox", "❌ Response data is null")
                     }
                 } else {
                     Log.e("ChatInbox", "❌ API returned success=false: ${body?.message}")
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d("ChatInbox", "Fetch messages cancelled")
+                // Don't log as error for cancellation
             } catch (e: com.google.gson.JsonSyntaxException) {
                 Log.e("ChatInbox", "❌ JSON Parse Error: ${e.message}", e)
-                Toast.makeText(this@ChatInboxActivity, "Server returned invalid data", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@ChatInboxActivity,
+                    "Server returned invalid data",
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
                 Log.e("ChatInbox", "❌ Error fetching messages: ${e.message}", e)
                 e.printStackTrace()
@@ -266,10 +329,17 @@ class ChatInboxActivity : AppCompatActivity() {
     // ==================== REAL-TIME POLLING ====================
 
     private fun startMessagePolling() {
+        pollingJob?.cancel() // Cancel any existing polling job
         pollingJob = lifecycleScope.launch {
-            while (true) {
-                delay(5000) // Poll every 5 seconds
-                fetchMessagesFromServer()
+            try {
+                while (true) {
+                    delay(15000) // Increased to 15 seconds to reduce server load
+                    if (!isSendingMessage && !isFinishing) {  // Check if activity is still active
+                        fetchMessagesFromServer()
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d("ChatInbox", "Message polling cancelled")
             }
         }
     }
@@ -310,15 +380,41 @@ class ChatInboxActivity : AppCompatActivity() {
 
         Log.d("ChatInbox", "✅ Message saved locally with ID: $localId")
 
-        // Clear input
-        messageInput.text.clear()
+        // Add message to UI immediately for better UX
+        val tempMessage = MessageItem(
+            message_id = localId.toInt(),
+            sender_id = currentUserId,
+            receiver_id = targetUserId,
+            message_text = text,
+            message_type = "text",
+            media_base64 = null,
+            file_name = null,
+            file_size = null,
+            timestamp = timestamp,
+            edited = false,
+            edited_at = null,
+            is_deleted = false,
+            vanish_mode = vanishMode,
+            seen = false,
+            seen_at = null
+        )
+        
+        // Add to messages list and update UI immediately
+        messages.add(tempMessage)
+        runOnUiThread {
+            adapter.notifyItemInserted(messages.size - 1)
+            scrollToBottom()
+            Log.d("ChatInbox", "✅ Message added to UI immediately")
+        }
 
-        // Reload UI
-        loadCachedMessages()
+        // Clear input
+        messageInput.text.clear()        // Reload UI
+        // Note: Don't call loadCachedMessages here since we already added to UI above
 
         // Upload to server
         if (authToken != null) {
             lifecycleScope.launch {
+                isSendingMessage = true
                 try {
                     Log.d("ChatInbox", "📤 Uploading message to server...")
 
@@ -330,7 +426,10 @@ class ChatInboxActivity : AppCompatActivity() {
                         vanish_mode = vanishMode
                     )
 
-                    Log.d("ChatInbox", "Request: auth_token=${authToken.take(10)}..., receiver_id=$targetUserId")
+                    Log.d(
+                        "ChatInbox",
+                        "Request: auth_token=${authToken.take(10)}..., receiver_id=$targetUserId"
+                    )
 
                     val response = RetrofitClient.apiService.sendMessage(request)
 
@@ -340,7 +439,11 @@ class ChatInboxActivity : AppCompatActivity() {
                     if (!response.isSuccessful) {
                         val errorBody = response.errorBody()?.string()
                         Log.e("ChatInbox", "❌ Upload failed: $errorBody")
-                        Toast.makeText(this@ChatInboxActivity, "Message will be sent when online", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@ChatInboxActivity,
+                            "Message will be sent when online",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return@launch
                     }
 
@@ -355,7 +458,20 @@ class ChatInboxActivity : AppCompatActivity() {
 
                             // Mark as synced in local DB
                             messageDB.markMessageAsSynced(localId.toInt(), data.message_id)
-                            loadCachedMessages()
+
+                            // Update the message in the UI with the server ID
+                            val messageIndex = messages.indexOfFirst {
+                                it.sender_id == currentUserId && it.timestamp == timestamp
+                            }
+                            if (messageIndex >= 0) {
+                                messages[messageIndex] = messages[messageIndex].copy(
+                                    message_id = data.message_id
+                                )
+                                adapter.notifyItemChanged(messageIndex)
+                                Log.d("ChatInbox", "✅ Updated message in UI with server ID")
+                            }
+
+                            // Note: Don't call loadCachedMessages() here to avoid UI flickering
                         }
                     } else {
                         Log.e("ChatInbox", "❌ Upload returned success=false: ${body?.message}")
@@ -363,7 +479,13 @@ class ChatInboxActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     Log.e("ChatInbox", "❌ Error sending message: ${e.message}", e)
                     e.printStackTrace()
-                    Toast.makeText(this@ChatInboxActivity, "Message will be sent when online", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@ChatInboxActivity,
+                        "Message will be sent when online",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } finally {
+                    isSendingMessage = false
                 }
             }
         } else {
@@ -373,7 +495,12 @@ class ChatInboxActivity : AppCompatActivity() {
 
     // ==================== SEND MEDIA MESSAGE ====================
 
-    private fun sendMediaMessage(type: String, base64Data: String, fileName: String? = null, fileSize: Int? = null) {
+    private fun sendMediaMessage(
+        type: String,
+        base64Data: String,
+        fileName: String? = null,
+        fileSize: Int? = null
+    ) {
         val authToken = sessionManager.getAuthToken()
 
         if (authToken == null) {
@@ -411,34 +538,42 @@ class ChatInboxActivity : AppCompatActivity() {
                         Log.d("ChatInbox", "✅ $type sent successfully")
 
                         // Cache message
-                        cacheMessage(MessageItem(
-                            message_id = data.message_id,
-                            sender_id = data.sender_id,
-                            receiver_id = data.receiver_id,
-                            message_text = null,
-                            message_type = type,
-                            media_base64 = base64Data,
-                            file_name = fileName,
-                            file_size = fileSize,
-                            timestamp = data.timestamp,
-                            edited = false,
-                            edited_at = null,
-                            is_deleted = false,
-                            vanish_mode = vanishMode,
-                            seen = false,
-                            seen_at = null
-                        ))
+                        cacheMessage(
+                            MessageItem(
+                                message_id = data.message_id,
+                                sender_id = data.sender_id,
+                                receiver_id = data.receiver_id,
+                                message_text = null,
+                                message_type = type,
+                                media_base64 = base64Data,
+                                file_name = fileName,
+                                file_size = fileSize,
+                                timestamp = data.timestamp,
+                                edited = false,
+                                edited_at = null,
+                                is_deleted = false,
+                                vanish_mode = vanishMode,
+                                seen = false,
+                                seen_at = null
+                            )
+                        )
 
                         loadCachedMessages()
-                        Toast.makeText(this@ChatInboxActivity, "$type sent", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ChatInboxActivity, "$type sent", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 } else {
                     Log.e("ChatInbox", "❌ Media upload failed")
-                    Toast.makeText(this@ChatInboxActivity, "Failed to send $type", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@ChatInboxActivity,
+                        "Failed to send $type",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
                 Log.e("ChatInbox", "❌ Error sending $type: ${e.message}", e)
-                Toast.makeText(this@ChatInboxActivity, "Failed to send $type", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatInboxActivity, "Failed to send $type", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }
@@ -448,13 +583,15 @@ class ChatInboxActivity : AppCompatActivity() {
     private fun editMessage(message: MessageItem) {
         try {
             if (message.sender_id != currentUserId) {
-                Toast.makeText(this, "You can only edit your own messages", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "You can only edit your own messages", Toast.LENGTH_SHORT)
+                    .show()
                 return
             }
 
             val timeSince = System.currentTimeMillis() - message.timestamp
             if (timeSince > 5 * 60 * 1000) {
-                Toast.makeText(this, "Can only edit messages within 5 minutes", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Can only edit messages within 5 minutes", Toast.LENGTH_SHORT)
+                    .show()
                 return
             }
 
@@ -506,14 +643,23 @@ class ChatInboxActivity : AppCompatActivity() {
                     if (data != null) {
                         messageDB.updateMessageText(messageId, newText, data.edited_at)
                         loadCachedMessages()
-                        Toast.makeText(this@ChatInboxActivity, "Message updated", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@ChatInboxActivity,
+                            "Message updated",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 } else {
-                    Toast.makeText(this@ChatInboxActivity, response.body()?.message ?: "Failed to edit", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@ChatInboxActivity,
+                        response.body()?.message ?: "Failed to edit",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
                 Log.e("ChatInbox", "❌ Error editing message: ${e.message}", e)
-                Toast.makeText(this@ChatInboxActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatInboxActivity, "Error: ${e.message}", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }
@@ -523,13 +669,18 @@ class ChatInboxActivity : AppCompatActivity() {
     private fun deleteMessage(message: MessageItem) {
         try {
             if (message.sender_id != currentUserId) {
-                Toast.makeText(this, "You can only delete your own messages", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "You can only delete your own messages", Toast.LENGTH_SHORT)
+                    .show()
                 return
             }
 
             val timeSince = System.currentTimeMillis() - message.timestamp
             if (timeSince > 5 * 60 * 1000) {
-                Toast.makeText(this, "Can only delete messages within 5 minutes", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Can only delete messages within 5 minutes",
+                    Toast.LENGTH_SHORT
+                ).show()
                 return
             }
 
@@ -565,14 +716,23 @@ class ChatInboxActivity : AppCompatActivity() {
                     if (data != null) {
                         messageDB.deleteMessage(messageId, data.deleted_at)
                         loadCachedMessages()
-                        Toast.makeText(this@ChatInboxActivity, "Message deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@ChatInboxActivity,
+                            "Message deleted",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 } else {
-                    Toast.makeText(this@ChatInboxActivity, response.body()?.message ?: "Failed to delete", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@ChatInboxActivity,
+                        response.body()?.message ?: "Failed to delete",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
                 Log.e("ChatInbox", "❌ Error deleting message: ${e.message}", e)
-                Toast.makeText(this@ChatInboxActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatInboxActivity, "Error: ${e.message}", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }
@@ -610,9 +770,15 @@ class ChatInboxActivity : AppCompatActivity() {
                                 ).show()
                             }
                         }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        Log.d("ChatInbox", "Vanish mode toggle cancelled")
                     } catch (e: Exception) {
                         Log.e("ChatInbox", "❌ Error toggling vanish mode: ${e.message}", e)
-                        Toast.makeText(this@ChatInboxActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@ChatInboxActivity,
+                            "Error: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
@@ -764,7 +930,8 @@ class ChatInboxActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("ChatInbox", "❌ Error uploading image: ${e.message}", e)
-                Toast.makeText(this@ChatInboxActivity, "Error uploading image", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatInboxActivity, "Error uploading image", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }
@@ -820,10 +987,11 @@ class ChatInboxActivity : AppCompatActivity() {
                     val channelName = snapshot.key ?: return
                     val isVideo = snapshot.child("type").getValue(String::class.java) == "video"
 
-                    val intent = Intent(this@ChatInboxActivity, IncomingCallActivity::class.java).apply {
-                        putExtra("CHANNEL_NAME", channelName)
-                        putExtra("IS_VIDEO", isVideo)
-                    }
+                    val intent =
+                        Intent(this@ChatInboxActivity, IncomingCallActivity::class.java).apply {
+                            putExtra("CHANNEL_NAME", channelName)
+                            putExtra("IS_VIDEO", isVideo)
+                        }
                     startActivity(intent)
                 }
             }
@@ -849,6 +1017,8 @@ class ChatInboxActivity : AppCompatActivity() {
                         RetrofitClient.apiService.clearVanishMessages(
                             ClearVanishMessagesRequest(authToken, targetUserId)
                         )
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        Log.d("ChatInbox", "Clear vanish messages cancelled")
                     } catch (e: Exception) {
                         Log.e("ChatInbox", "❌ Error clearing vanish messages: ${e.message}")
                     }
@@ -863,6 +1033,12 @@ class ChatInboxActivity : AppCompatActivity() {
         super.onResume()
         screenshotDetector?.startWatching()
         Log.d("ChatInbox", "Screenshot detection started")
+
+        // Refresh messages when returning to chat
+        loadCachedMessages()
+        if (!isSendingMessage) {
+            fetchMessagesFromServer()
+        }
     }
 
     override fun onPause() {
@@ -876,5 +1052,6 @@ class ChatInboxActivity : AppCompatActivity() {
         screenshotDetector?.stopWatching()
         screenshotDetector = null
         pollingJob?.cancel()
+        Log.d("ChatInbox", "ChatInboxActivity destroyed and cleanup completed")
     }
 }
