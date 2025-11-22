@@ -33,7 +33,6 @@ class searchbar : AppCompatActivity() {
     private lateinit var noResultsText: TextView
     private lateinit var sessionManager: SessionManager
     private lateinit var adapter: SearchResultsAdapter
-
     private val searchResults = mutableListOf<SearchUserResult>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,7 +81,7 @@ class searchbar : AppCompatActivity() {
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val query = s.toString().trim()
-                if (query.length >= 2) { // Start searching after 2 characters
+                if (query.length >= 2) {
                     searchUsers(query)
                 } else {
                     searchResults.clear()
@@ -120,7 +119,6 @@ class searchbar : AppCompatActivity() {
 
     private fun searchUsers(query: String) {
         val authToken = sessionManager.getAuthToken()
-
         if (authToken == null) {
             Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
             return
@@ -137,21 +135,21 @@ class searchbar : AppCompatActivity() {
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
-
                     if (data != null) {
                         searchResults.clear()
                         searchResults.addAll(data.users)
-                        adapter.notifyDataSetChanged()
 
                         if (searchResults.isEmpty()) {
                             searchResultsRecycler.visibility = View.GONE
                             noResultsText.visibility = View.VISIBLE
                             noResultsText.text = "No users found for \"$query\""
                         } else {
+                            // First update the list without statuses
+                            adapter.notifyDataSetChanged()
                             searchResultsRecycler.visibility = View.VISIBLE
                             noResultsText.visibility = View.GONE
 
-                            // Fetch online status for all search results
+                            // Then fetch and update statuses
                             fetchUserStatuses()
                         }
 
@@ -178,7 +176,6 @@ class searchbar : AppCompatActivity() {
 
     private fun fetchUserStatuses() {
         val authToken = sessionManager.getAuthToken() ?: return
-
         if (searchResults.isEmpty()) return
 
         lifecycleScope.launch {
@@ -189,34 +186,35 @@ class searchbar : AppCompatActivity() {
                     user_ids = userIds
                 )
 
+                Log.d("SearchBar", "📡 Fetching statuses for ${userIds.size} users: $userIds")
+
                 val response = RetrofitClient.apiService.getMultipleUserStatuses(request)
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val statusData = response.body()?.data?.statuses
-
                     if (statusData != null) {
-                        // Create a map of user_id to online status
-                        val statusMap = statusData.associate {
-                            it.user_id to it.is_online
-                        }
+                        val statusMap = statusData.associate { it.user_id to it.is_online }
+
+                        Log.d("SearchBar", "✅ Received statuses: $statusMap")
 
                         // Update adapter with statuses
                         adapter.updateStatuses(statusMap)
 
                         Log.d("SearchBar", "✅ Updated statuses for ${statusData.size} users")
+                    } else {
+                        Log.w("SearchBar", "⚠️ Status data is null")
                     }
                 } else {
-                    Log.e("SearchBar", "Failed to fetch statuses: ${response.body()?.message}")
+                    Log.e("SearchBar", "❌ Failed to fetch statuses: ${response.body()?.message}")
                 }
             } catch (e: Exception) {
-                Log.e("SearchBar", "Error fetching statuses: ${e.message}", e)
+                Log.e("SearchBar", "❌ Error fetching statuses: ${e.message}", e)
             }
         }
     }
 
     private fun openUserProfile(user: SearchUserResult) {
         Log.d("SearchBar", "Opening profile for: ${user.username} (ID: ${user.user_id})")
-
         val intent = Intent(this, activityprofile2::class.java)
         intent.putExtra("USER_ID", user.user_id)
         intent.putExtra("USERNAME", user.username)

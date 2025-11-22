@@ -44,6 +44,9 @@ class SearchResultsAdapter(
             if (isOnline) R.drawable.status_dot_online else R.drawable.status_dot_offline
         )
 
+        // Make status indicator visible
+        holder.statusIndicator.visibility = View.VISIBLE
+
         // Click listener
         holder.itemView.setOnClickListener {
             onClick(user)
