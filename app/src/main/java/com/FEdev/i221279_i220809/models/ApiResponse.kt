@@ -423,3 +423,36 @@ data class GetChatThreadsResponse(
     val threads: List<ChatThread>,
     val total: Int
 )
+
+
+
+data class ScreenshotNotificationRequest(
+    val auth_token: String,
+    val target_user_id: Int,
+    val screenshot_taker_id: Int,
+    val screenshot_taker_username: String
+)
+
+data class ScreenshotNotificationResponse(
+    val notification_id: Int,
+    val timestamp: Long
+)
+
+data class GetScreenshotNotificationsRequest(
+    val auth_token: String,
+    val mark_as_read: Boolean = false
+)
+
+data class ScreenshotNotification(
+    val notification_id: Int,
+    val screenshot_taker_id: Int,
+    val screenshot_taker_username: String,
+    val timestamp: Long,
+    val is_read: Boolean
+)
+
+data class GetScreenshotNotificationsResponse(
+    val notifications: List<ScreenshotNotification>,
+    val unread_count: Int,
+    val total: Int
+)

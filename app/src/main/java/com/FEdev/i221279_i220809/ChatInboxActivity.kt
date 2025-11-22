@@ -43,6 +43,7 @@ class ChatInboxActivity : AppCompatActivity() {
 //    private val messages = mutableListOf<ApiService.MessageItem>()
 private val messages = mutableListOf<MessageItem>()
     private lateinit var adapter: NewChatAdapter
+    private var screenshotDetector: ScreenshotDetector? = null
 
     private var currentUserId: Int = 0
     private var targetUserId: Int = 0
@@ -76,6 +77,14 @@ private val messages = mutableListOf<MessageItem>()
         } else {
             "${targetUserId}_${currentUserId}"
         }
+
+        screenshotDetector = ScreenshotDetector(
+            context = this,
+            targetUserId = targetUserId,
+            targetUsername = targetName
+        )
+
+
 
         bindViews()
         setupRecycler()
@@ -739,8 +748,23 @@ private val messages = mutableListOf<MessageItem>()
         super.onBackPressed()
     }
 
+    override fun onResume() {
+        super.onResume()
+        screenshotDetector?.startWatching()
+        Log.d("ChatInbox", "Screenshot detection started")
+    }
+
+    // Stop screenshot detection when activity is not visible
+    override fun onPause() {
+        super.onPause()
+        screenshotDetector?.stopWatching()
+        Log.d("ChatInbox", "Screenshot detection stopped")
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        screenshotDetector?.stopWatching()
+        screenshotDetector = null
         pollingJob?.cancel()
     }
 }

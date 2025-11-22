@@ -30,6 +30,18 @@
         android:theme="@style/Theme._22i127922i0809_Assignment2"
         android:usesCleartextTraffic="true">
         <activity
+            android:name=".ScreenshotNotificationsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ImageCacheDatabase"
+            android:exported="false" />
+        <activity
+            android:name=".ImageCacheManager"
+            android:exported="false" />
+        <activity
+            android:name=".EnhancedScreenshotDetector"
+            android:exported="false" />
+        <activity
             android:name=".utils.ChatThreadAdapter"
             android:exported="false" />
         <activity

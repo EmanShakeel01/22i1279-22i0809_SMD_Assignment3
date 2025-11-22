@@ -73,6 +73,7 @@ dependencies {
 
     // ✅ Agora SDK (for real-time communication)
     implementation("io.agora.rtc:full-sdk:4.6.0")
+    implementation("com.squareup.picasso:picasso:2.8")
 
     // ✅ Testing
     testImplementation(libs.junit)

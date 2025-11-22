@@ -1,5 +1,6 @@
 package com.FEdev.i221279_i220809
 
+import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,7 +9,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.FEdev.i221279_i220809.models.ChatThread
 import de.hdodenhof.circleimageview.CircleImageView
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class ChatThreadAdapter(
     private val threads: MutableList<ChatThread>,
@@ -53,12 +55,12 @@ class ChatThreadAdapter(
             }
 
             // Bold text for unread messages
-            holder.username.setTypeface(null, android.graphics.Typeface.BOLD)
-            holder.lastMessage.setTypeface(null, android.graphics.Typeface.BOLD)
+            holder.username.setTypeface(null, Typeface.BOLD)
+            holder.lastMessage.setTypeface(null, Typeface.BOLD)
         } else {
             holder.unreadBadge.visibility = View.GONE
-            holder.username.setTypeface(null, android.graphics.Typeface.NORMAL)
-            holder.lastMessage.setTypeface(null, android.graphics.Typeface.NORMAL)
+            holder.username.setTypeface(null, Typeface.NORMAL)
+            holder.lastMessage.setTypeface(null, Typeface.NORMAL)
         }
 
         // Vanish mode indicator

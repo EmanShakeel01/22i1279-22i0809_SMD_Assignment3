@@ -1,5 +1,6 @@
 package com.FEdev.i221279_i220809
 
+import com.FEdev.i221279_i220809.ChatThreadAdapter
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable

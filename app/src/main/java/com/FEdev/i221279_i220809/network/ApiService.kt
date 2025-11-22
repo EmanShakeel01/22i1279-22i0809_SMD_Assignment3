@@ -116,4 +116,15 @@ interface ApiService {
     @POST("get_chat_threads.php")
     suspend fun getChatThreads(@Body request: GetChatThreadsRequest): Response<ApiResponse<GetChatThreadsResponse>>
 
+    @POST("send_screenshot_notification.php")
+    suspend fun sendScreenshotNotification(
+        @Body request: ScreenshotNotificationRequest
+    ): Response<ApiResponse<ScreenshotNotificationResponse>>
+
+    @POST("get_screenshot_notifications.php")
+    suspend fun getScreenshotNotifications(
+        @Body request: GetScreenshotNotificationsRequest
+    ): Response<ApiResponse<GetScreenshotNotificationsResponse>>
+
+
 }
