@@ -1,6 +1,5 @@
 package com.FEdev.i221279_i220809
 
-import com.FEdev.i221279_i220809.ChatThreadAdapter
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -49,6 +48,8 @@ class chatlist : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chatlist)
 
+        Log.d("ChatList", "=== ChatList onCreate ===")
+
         sessionManager = SessionManager(this)
 
         initViews()
@@ -70,7 +71,9 @@ class chatlist : AppCompatActivity() {
         searchResultsRecycler = findViewById(R.id.searchResultsRecycler)
         swipeRefresh = findViewById(R.id.swipeRefresh)
         emptyStateView = findViewById(R.id.emptyStateText)
-        loadingIndicator = findViewById(R.id.loadingIndicator)
+        loadingIndicator = findViewById(R.id.loadingIndicator) ?: ProgressBar(this).apply {
+            visibility = View.GONE
+        }
 
         backButton.setOnClickListener { finish() }
         clearSearchButton.setOnClickListener {
@@ -78,20 +81,17 @@ class chatlist : AppCompatActivity() {
             hideSearch()
         }
 
-        // Initially hide search results and clear button
         searchResultsRecycler.visibility = View.GONE
         clearSearchButton.visibility = View.GONE
     }
 
     private fun setupRecyclers() {
-        // Chat threads recycler
         threadsAdapter = ChatThreadAdapter(chatThreads) { thread ->
             openChat(thread)
         }
         threadsRecycler.layoutManager = LinearLayoutManager(this)
         threadsRecycler.adapter = threadsAdapter
 
-        // Search results recycler
         searchAdapter = SearchResultsAdapter(searchResults) { user ->
             openChatWithUser(user)
         }
@@ -143,7 +143,11 @@ class chatlist : AppCompatActivity() {
     private fun loadChatThreads() {
         val authToken = sessionManager.getAuthToken()
 
+        Log.d("ChatList", "=== Loading Chat Threads ===")
+        Log.d("ChatList", "Auth token: ${authToken?.take(10)}...")
+
         if (authToken == null) {
+            Log.e("ChatList", "❌ No auth token")
             Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
             swipeRefresh.isRefreshing = false
             return
@@ -156,46 +160,88 @@ class chatlist : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val request = GetChatThreadsRequest(auth_token = authToken)
+
+                Log.d("ChatList", "📡 Making API call to get_chat_threads.php...")
+
                 val response = RetrofitClient.apiService.getChatThreads(request)
 
-                if (response.isSuccessful && response.body()?.success == true) {
-                    val data = response.body()?.data
+                Log.d("ChatList", "Response code: ${response.code()}")
+                Log.d("ChatList", "Response successful: ${response.isSuccessful}")
+
+                if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("ChatList", "❌ Server error: $errorBody")
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@chatlist,
+                            "Failed to load chats",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    return@launch
+                }
+
+                val body = response.body()
+                Log.d("ChatList", "Response body success: ${body?.success}")
+                Log.d("ChatList", "Response body message: ${body?.message}")
+
+                if (body?.success == true) {
+                    val data = body.data
 
                     if (data != null) {
-                        chatThreads.clear()
-                        chatThreads.addAll(data.threads)
-                        threadsAdapter.notifyDataSetChanged()
+                        Log.d("ChatList", "✅ Received ${data.threads.size} threads")
 
-                        // Show/hide empty state
-                        if (chatThreads.isEmpty()) {
-                            emptyStateView.visibility = View.VISIBLE
-                            emptyStateView.text = "No conversations yet\nSearch for users to start chatting"
-                            threadsRecycler.visibility = View.GONE
-                        } else {
-                            emptyStateView.visibility = View.GONE
-                            threadsRecycler.visibility = View.VISIBLE
+                        runOnUiThread {
+                            chatThreads.clear()
+                            chatThreads.addAll(data.threads)
+                            threadsAdapter.notifyDataSetChanged()
+
+                            if (chatThreads.isEmpty()) {
+                                emptyStateView.visibility = View.VISIBLE
+                                emptyStateView.text = "No conversations yet\nSearch for users to start chatting"
+                                threadsRecycler.visibility = View.GONE
+                            } else {
+                                emptyStateView.visibility = View.GONE
+                                threadsRecycler.visibility = View.VISIBLE
+                            }
                         }
-
-                        Log.d("ChatList", "✅ Loaded ${data.total} chat threads")
+                    } else {
+                        Log.e("ChatList", "❌ Response data is null")
                     }
                 } else {
-                    Log.e("ChatList", "Failed to load threads: ${response.body()?.message}")
+                    Log.e("ChatList", "❌ API returned success=false: ${body?.message}")
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@chatlist,
+                            body?.message ?: "Failed to load chats",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: com.google.gson.JsonSyntaxException) {
+                Log.e("ChatList", "❌ JSON Parse Error: ${e.message}", e)
+                runOnUiThread {
                     Toast.makeText(
                         this@chatlist,
-                        response.body()?.message ?: "Failed to load chats",
+                        "Server returned invalid data",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             } catch (e: Exception) {
-                Log.e("ChatList", "Error loading threads: ${e.message}", e)
-                Toast.makeText(
-                    this@chatlist,
-                    "Network error",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Log.e("ChatList", "❌ Error loading threads: ${e.message}", e)
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(
+                        this@chatlist,
+                        "Network error",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             } finally {
-                swipeRefresh.isRefreshing = false
-                loadingIndicator.visibility = View.GONE
+                runOnUiThread {
+                    swipeRefresh.isRefreshing = false
+                    loadingIndicator.visibility = View.GONE
+                }
             }
         }
     }
@@ -250,7 +296,6 @@ class chatlist : AppCompatActivity() {
                             emptyStateView.visibility = View.GONE
                             searchResultsRecycler.visibility = View.VISIBLE
 
-                            // Fetch online statuses
                             fetchUserStatuses()
                         }
 
@@ -303,7 +348,9 @@ class chatlist : AppCompatActivity() {
     // ==================== NAVIGATION ====================
 
     private fun openChat(thread: ChatThread) {
-        Log.d("ChatList", "Opening chat with ${thread.other_username} (ID: ${thread.other_user_id})")
+        Log.d("ChatList", "=== Opening chat ===")
+        Log.d("ChatList", "Other user: ${thread.other_username}")
+        Log.d("ChatList", "Other user ID: ${thread.other_user_id}")
 
         val intent = Intent(this, ChatInboxActivity::class.java).apply {
             putExtra("targetUserId", thread.other_user_id)
@@ -314,7 +361,9 @@ class chatlist : AppCompatActivity() {
     }
 
     private fun openChatWithUser(user: SearchUserResult) {
-        Log.d("ChatList", "Opening chat with ${user.username} (ID: ${user.user_id})")
+        Log.d("ChatList", "=== Opening new chat ===")
+        Log.d("ChatList", "User: ${user.username}")
+        Log.d("ChatList", "User ID: ${user.user_id}")
 
         val intent = Intent(this, ChatInboxActivity::class.java).apply {
             putExtra("targetUserId", user.user_id)
@@ -324,7 +373,6 @@ class chatlist : AppCompatActivity() {
         }
         startActivity(intent)
 
-        // Hide search after opening chat
         hideSearch()
     }
 
@@ -360,7 +408,7 @@ class chatlist : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh threads when returning to this screen
+        Log.d("ChatList", "onResume - Reloading threads")
         loadChatThreads()
     }
 

@@ -3,6 +3,7 @@ package com.FEdev.i221279_i220809
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
@@ -16,8 +17,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.FEdev.i221279_i220809.database.MessageDatabaseHelper
 import com.FEdev.i221279_i220809.models.*
-import com.FEdev.i221279_i220809.network.ApiService
-
 import com.FEdev.i221279_i220809.network.RetrofitClient
 import com.FEdev.i221279_i220809.utils.SessionManager
 import com.google.firebase.auth.FirebaseAuth
@@ -36,12 +35,12 @@ class ChatInboxActivity : AppCompatActivity() {
     private lateinit var fileBtn: ImageView
     private lateinit var vanishModeBtn: ImageView
     private lateinit var title: TextView
+    private lateinit var loadingIndicator: ProgressBar
 
     private val sessionManager by lazy { SessionManager(this) }
     private val messageDB by lazy { MessageDatabaseHelper(this) }
 
-//    private val messages = mutableListOf<ApiService.MessageItem>()
-private val messages = mutableListOf<MessageItem>()
+    private val messages = mutableListOf<MessageItem>()
     private lateinit var adapter: NewChatAdapter
     private var screenshotDetector: ScreenshotDetector? = null
 
@@ -66,7 +65,13 @@ private val messages = mutableListOf<MessageItem>()
         targetUserId = intent.getIntExtra("targetUserId", 0)
         targetName = intent.getStringExtra("targetName") ?: "User"
 
+        Log.d("ChatInbox", "=== ChatInboxActivity onCreate ===")
+        Log.d("ChatInbox", "Current User ID: $currentUserId")
+        Log.d("ChatInbox", "Target User ID: $targetUserId")
+        Log.d("ChatInbox", "Target Name: $targetName")
+
         if (currentUserId <= 0 || targetUserId <= 0) {
+            Log.e("ChatInbox", "❌ Invalid user data: currentUserId=$currentUserId, targetUserId=$targetUserId")
             Toast.makeText(this, "Invalid user data", Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -78,20 +83,26 @@ private val messages = mutableListOf<MessageItem>()
             "${targetUserId}_${currentUserId}"
         }
 
+        Log.d("ChatInbox", "Thread ID: $threadId")
+
         screenshotDetector = ScreenshotDetector(
             context = this,
             targetUserId = targetUserId,
             targetUsername = targetName
         )
 
-
-
         bindViews()
         setupRecycler()
         loadCachedMessages()
-        fetchMessagesFromServer()
-        startMessagePolling()
-        syncPendingMessages()
+
+        // Delay server fetch to ensure UI is ready
+        lifecycleScope.launch {
+            delay(500)
+            fetchMessagesFromServer()
+            startMessagePolling()
+            syncPendingMessages()
+        }
+
         listenForIncomingCalls()
 
         findViewById<ImageView>(R.id.btnBack).setOnClickListener {
@@ -118,6 +129,10 @@ private val messages = mutableListOf<MessageItem>()
         fileBtn = findViewById(R.id.fileButton)
         vanishModeBtn = findViewById(R.id.vanishModeButton)
         title = findViewById(R.id.chatTitle)
+        loadingIndicator = findViewById(R.id.loadingIndicator) ?: ProgressBar(this).apply {
+            visibility = android.view.View.GONE
+        }
+
         title.text = targetName
     }
 
@@ -126,8 +141,8 @@ private val messages = mutableListOf<MessageItem>()
             context = this,
             messages = messages,
             currentUserId = currentUserId,
-            onEditClick = { msg: MessageItem -> editMessage(msg) },  // Explicit type: MessageItem
-            onDeleteClick = { msg: MessageItem -> deleteMessage(msg) }  // Explicit type: MessageItem
+            onEditClick = { msg -> editMessage(msg) },
+            onDeleteClick = { msg -> deleteMessage(msg) }
         )
         recycler.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         recycler.adapter = adapter
@@ -161,12 +176,14 @@ private val messages = mutableListOf<MessageItem>()
                     )
                 })
 
-                adapter.notifyDataSetChanged()
-                scrollToBottom()
+                runOnUiThread {
+                    adapter.notifyDataSetChanged()
+                    scrollToBottom()
+                }
 
                 Log.d("ChatInbox", "✅ Loaded ${messages.size} cached messages")
             } catch (e: Exception) {
-                Log.e("ChatInbox", "Error loading cached messages: ${e.message}", e)
+                Log.e("ChatInbox", "❌ Error loading cached messages: ${e.message}", e)
             }
         }
     }
@@ -174,10 +191,20 @@ private val messages = mutableListOf<MessageItem>()
     // ==================== FETCH FROM SERVER ====================
 
     private fun fetchMessagesFromServer() {
-        val authToken = sessionManager.getAuthToken() ?: return
+        val authToken = sessionManager.getAuthToken()
+
+        if (authToken == null) {
+            Log.e("ChatInbox", "❌ No auth token available")
+            return
+        }
 
         lifecycleScope.launch {
             try {
+                Log.d("ChatInbox", "📡 Fetching messages from server...")
+                Log.d("ChatInbox", "Auth token: ${authToken.take(10)}...")
+                Log.d("ChatInbox", "Other user ID: $targetUserId")
+                Log.d("ChatInbox", "Last message ID: $lastMessageId")
+
                 val request = GetMessagesRequest(
                     auth_token = authToken,
                     other_user_id = targetUserId,
@@ -186,10 +213,26 @@ private val messages = mutableListOf<MessageItem>()
 
                 val response = RetrofitClient.apiService.getMessages(request)
 
-                if (response.isSuccessful && response.body()?.success == true) {
-                    val data = response.body()?.data
+                Log.d("ChatInbox", "Response code: ${response.code()}")
+                Log.d("ChatInbox", "Response successful: ${response.isSuccessful}")
+
+                if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("ChatInbox", "❌ Server error: $errorBody")
+                    return@launch
+                }
+
+                val body = response.body()
+                Log.d("ChatInbox", "Response body success: ${body?.success}")
+                Log.d("ChatInbox", "Response body message: ${body?.message}")
+
+                if (body?.success == true) {
+                    val data = body.data
 
                     if (data != null) {
+                        Log.d("ChatInbox", "✅ Received ${data.messages.size} messages")
+                        Log.d("ChatInbox", "Vanish mode: ${data.vanish_mode}")
+
                         vanishMode = data.vanish_mode
                         updateVanishModeUI()
 
@@ -197,20 +240,25 @@ private val messages = mutableListOf<MessageItem>()
                         data.messages.forEach { msg ->
                             cacheMessage(msg)
 
-                            // Update last message ID
                             if (msg.message_id > lastMessageId) {
                                 lastMessageId = msg.message_id
                             }
                         }
 
-                        // Reload from cache to reflect changes
+                        // Reload from cache
                         loadCachedMessages()
-
-                        Log.d("ChatInbox", "✅ Fetched ${data.messages.size} messages from server")
+                    } else {
+                        Log.e("ChatInbox", "❌ Response data is null")
                     }
+                } else {
+                    Log.e("ChatInbox", "❌ API returned success=false: ${body?.message}")
                 }
+            } catch (e: com.google.gson.JsonSyntaxException) {
+                Log.e("ChatInbox", "❌ JSON Parse Error: ${e.message}", e)
+                Toast.makeText(this@ChatInboxActivity, "Server returned invalid data", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Log.e("ChatInbox", "Error fetching messages: ${e.message}", e)
+                Log.e("ChatInbox", "❌ Error fetching messages: ${e.message}", e)
+                e.printStackTrace()
             }
         }
     }
@@ -220,7 +268,7 @@ private val messages = mutableListOf<MessageItem>()
     private fun startMessagePolling() {
         pollingJob = lifecycleScope.launch {
             while (true) {
-                delay(3000) // Poll every 3 seconds
+                delay(5000) // Poll every 5 seconds
                 fetchMessagesFromServer()
             }
         }
@@ -235,13 +283,17 @@ private val messages = mutableListOf<MessageItem>()
             return
         }
 
-        val authToken = sessionManager.getAuthToken()
+        Log.d("ChatInbox", "=== Sending text message ===")
+        Log.d("ChatInbox", "Message text: $text")
+        Log.d("ChatInbox", "Receiver ID: $targetUserId")
+        Log.d("ChatInbox", "Vanish mode: $vanishMode")
 
+        val authToken = sessionManager.getAuthToken()
         val timestamp = System.currentTimeMillis()
 
         // Save to local DB immediately (pending upload)
         val localId = messageDB.insertMessage(
-            messageId = 0, // Will be updated after upload
+            messageId = 0,
             threadId = threadId,
             senderId = currentUserId,
             receiverId = targetUserId,
@@ -256,6 +308,8 @@ private val messages = mutableListOf<MessageItem>()
             pendingUpload = true
         )
 
+        Log.d("ChatInbox", "✅ Message saved locally with ID: $localId")
+
         // Clear input
         messageInput.text.clear()
 
@@ -266,6 +320,8 @@ private val messages = mutableListOf<MessageItem>()
         if (authToken != null) {
             lifecycleScope.launch {
                 try {
+                    Log.d("ChatInbox", "📤 Uploading message to server...")
+
                     val request = SendMessageRequest(
                         auth_token = authToken,
                         receiver_id = targetUserId,
@@ -274,31 +330,61 @@ private val messages = mutableListOf<MessageItem>()
                         vanish_mode = vanishMode
                     )
 
+                    Log.d("ChatInbox", "Request: auth_token=${authToken.take(10)}..., receiver_id=$targetUserId")
+
                     val response = RetrofitClient.apiService.sendMessage(request)
 
-                    if (response.isSuccessful && response.body()?.success == true) {
-                        val data = response.body()?.data
+                    Log.d("ChatInbox", "Upload response code: ${response.code()}")
+                    Log.d("ChatInbox", "Upload response success: ${response.isSuccessful}")
+
+                    if (!response.isSuccessful) {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("ChatInbox", "❌ Upload failed: $errorBody")
+                        Toast.makeText(this@ChatInboxActivity, "Message will be sent when online", Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+
+                    val body = response.body()
+                    Log.d("ChatInbox", "Upload response body: $body")
+
+                    if (body?.success == true) {
+                        val data = body.data
 
                         if (data != null) {
+                            Log.d("ChatInbox", "✅ Message uploaded! Server ID: ${data.message_id}")
+
                             // Mark as synced in local DB
                             messageDB.markMessageAsSynced(localId.toInt(), data.message_id)
                             loadCachedMessages()
-
-                            Log.d("ChatInbox", "✅ Message sent and synced")
                         }
+                    } else {
+                        Log.e("ChatInbox", "❌ Upload returned success=false: ${body?.message}")
                     }
                 } catch (e: Exception) {
-                    Log.e("ChatInbox", "Error sending message: ${e.message}", e)
+                    Log.e("ChatInbox", "❌ Error sending message: ${e.message}", e)
+                    e.printStackTrace()
                     Toast.makeText(this@ChatInboxActivity, "Message will be sent when online", Toast.LENGTH_SHORT).show()
                 }
             }
+        } else {
+            Log.e("ChatInbox", "❌ No auth token for upload")
         }
     }
 
     // ==================== SEND MEDIA MESSAGE ====================
 
     private fun sendMediaMessage(type: String, base64Data: String, fileName: String? = null, fileSize: Int? = null) {
-        val authToken = sessionManager.getAuthToken() ?: return
+        val authToken = sessionManager.getAuthToken()
+
+        if (authToken == null) {
+            Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Log.d("ChatInbox", "=== Sending $type message ===")
+        Log.d("ChatInbox", "File name: $fileName")
+        Log.d("ChatInbox", "File size: $fileSize")
+        Log.d("ChatInbox", "Base64 length: ${base64Data.length}")
 
         Toast.makeText(this, "Uploading $type...", Toast.LENGTH_SHORT).show()
 
@@ -316,10 +402,14 @@ private val messages = mutableListOf<MessageItem>()
 
                 val response = RetrofitClient.apiService.sendMessage(request)
 
+                Log.d("ChatInbox", "Media upload response code: ${response.code()}")
+
                 if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
 
                     if (data != null) {
+                        Log.d("ChatInbox", "✅ $type sent successfully")
+
                         // Cache message
                         cacheMessage(MessageItem(
                             message_id = data.message_id,
@@ -342,9 +432,12 @@ private val messages = mutableListOf<MessageItem>()
                         loadCachedMessages()
                         Toast.makeText(this@ChatInboxActivity, "$type sent", Toast.LENGTH_SHORT).show()
                     }
+                } else {
+                    Log.e("ChatInbox", "❌ Media upload failed")
+                    Toast.makeText(this@ChatInboxActivity, "Failed to send $type", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("ChatInbox", "Error sending $type: ${e.message}", e)
+                Log.e("ChatInbox", "❌ Error sending $type: ${e.message}", e)
                 Toast.makeText(this@ChatInboxActivity, "Failed to send $type", Toast.LENGTH_SHORT).show()
             }
         }
@@ -389,7 +482,7 @@ private val messages = mutableListOf<MessageItem>()
                 .setNegativeButton("Cancel", null)
                 .show()
         } catch (e: Exception) {
-            Log.e("ChatInbox", "Error in editMessage", e)
+            Log.e("ChatInbox", "❌ Error in editMessage", e)
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
@@ -411,17 +504,15 @@ private val messages = mutableListOf<MessageItem>()
                     val data = response.body()?.data
 
                     if (data != null) {
-                        // Update in local DB
                         messageDB.updateMessageText(messageId, newText, data.edited_at)
                         loadCachedMessages()
-
                         Toast.makeText(this@ChatInboxActivity, "Message updated", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Toast.makeText(this@ChatInboxActivity, response.body()?.message ?: "Failed to edit", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("ChatInbox", "Error editing message: ${e.message}", e)
+                Log.e("ChatInbox", "❌ Error editing message: ${e.message}", e)
                 Toast.makeText(this@ChatInboxActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -451,7 +542,7 @@ private val messages = mutableListOf<MessageItem>()
                 .setNegativeButton("Cancel", null)
                 .show()
         } catch (e: Exception) {
-            Log.e("ChatInbox", "Error in deleteMessage", e)
+            Log.e("ChatInbox", "❌ Error in deleteMessage", e)
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
@@ -472,17 +563,15 @@ private val messages = mutableListOf<MessageItem>()
                     val data = response.body()?.data
 
                     if (data != null) {
-                        // Update in local DB
                         messageDB.deleteMessage(messageId, data.deleted_at)
                         loadCachedMessages()
-
                         Toast.makeText(this@ChatInboxActivity, "Message deleted", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Toast.makeText(this@ChatInboxActivity, response.body()?.message ?: "Failed to delete", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("ChatInbox", "Error deleting message: ${e.message}", e)
+                Log.e("ChatInbox", "❌ Error deleting message: ${e.message}", e)
                 Toast.makeText(this@ChatInboxActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -522,7 +611,7 @@ private val messages = mutableListOf<MessageItem>()
                             }
                         }
                     } catch (e: Exception) {
-                        Log.e("ChatInbox", "Error toggling vanish mode: ${e.message}", e)
+                        Log.e("ChatInbox", "❌ Error toggling vanish mode: ${e.message}", e)
                         Toast.makeText(this@ChatInboxActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -567,26 +656,29 @@ private val messages = mutableListOf<MessageItem>()
                 Log.d("ChatInbox", "Syncing ${pendingMessages.size} pending messages")
 
                 pendingMessages.forEach { pending ->
-                    // Upload to server
-                    val request = SendMessageRequest(
-                        auth_token = authToken,
-                        receiver_id = pending.receiverId,
-                        message_type = pending.messageType,
-                        message_text = pending.messageText,
-                        media_base64 = pending.mediaBase64,
-                        file_name = pending.fileName,
-                        file_size = pending.fileSize,
-                        vanish_mode = pending.vanishMode
-                    )
+                    try {
+                        val request = SendMessageRequest(
+                            auth_token = authToken,
+                            receiver_id = pending.receiverId,
+                            message_type = pending.messageType,
+                            message_text = pending.messageText,
+                            media_base64 = pending.mediaBase64,
+                            file_name = pending.fileName,
+                            file_size = pending.fileSize,
+                            vanish_mode = pending.vanishMode
+                        )
 
-                    val response = RetrofitClient.apiService.sendMessage(request)
+                        val response = RetrofitClient.apiService.sendMessage(request)
 
-                    if (response.isSuccessful && response.body()?.success == true) {
-                        val data = response.body()?.data
-                        if (data != null) {
-                            messageDB.markMessageAsSynced(pending.id, data.message_id)
-                            Log.d("ChatInbox", "✅ Synced pending message ${pending.id}")
+                        if (response.isSuccessful && response.body()?.success == true) {
+                            val data = response.body()?.data
+                            if (data != null) {
+                                messageDB.markMessageAsSynced(pending.id, data.message_id)
+                                Log.d("ChatInbox", "✅ Synced pending message ${pending.id}")
+                            }
                         }
+                    } catch (e: Exception) {
+                        Log.e("ChatInbox", "❌ Error syncing message ${pending.id}: ${e.message}")
                     }
                 }
 
@@ -594,7 +686,7 @@ private val messages = mutableListOf<MessageItem>()
                     loadCachedMessages()
                 }
             } catch (e: Exception) {
-                Log.e("ChatInbox", "Error syncing pending messages: ${e.message}", e)
+                Log.e("ChatInbox", "❌ Error syncing pending messages: ${e.message}", e)
             }
         }
     }
@@ -644,25 +736,44 @@ private val messages = mutableListOf<MessageItem>()
             try {
                 contentResolver.openInputStream(uri)?.use { inputStream ->
                     val bitmap = BitmapFactory.decodeStream(inputStream)
+
+                    // Compress image
+                    val maxSize = 1024
+                    val scale = minOf(
+                        maxSize.toFloat() / bitmap.width,
+                        maxSize.toFloat() / bitmap.height,
+                        1.0f
+                    )
+
+                    val scaledBitmap = if (scale < 1.0f) {
+                        Bitmap.createScaledBitmap(
+                            bitmap,
+                            (bitmap.width * scale).toInt(),
+                            (bitmap.height * scale).toInt(),
+                            true
+                        )
+                    } else {
+                        bitmap
+                    }
+
                     val baos = ByteArrayOutputStream()
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 60, baos)
-                    val base64Image = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT)
+                    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos)
+                    val base64Image = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+
                     sendMediaMessage("image", base64Image)
                 }
             } catch (e: Exception) {
-                Log.e("ChatInbox", "Error uploading image: ${e.message}", e)
+                Log.e("ChatInbox", "❌ Error uploading image: ${e.message}", e)
                 Toast.makeText(this@ChatInboxActivity, "Error uploading image", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun handleVideoUpload(uri: Uri) {
-        // Similar to image, but with file size check
-        Toast.makeText(this, "Video upload - implement compression", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Video upload - compress and implement", Toast.LENGTH_SHORT).show()
     }
 
     private fun handleFileUpload(uri: Uri) {
-        // Similar to image, get file name and size
         Toast.makeText(this, "File upload - implement", Toast.LENGTH_SHORT).show()
     }
 
@@ -739,7 +850,7 @@ private val messages = mutableListOf<MessageItem>()
                             ClearVanishMessagesRequest(authToken, targetUserId)
                         )
                     } catch (e: Exception) {
-                        Log.e("ChatInbox", "Error clearing vanish messages: ${e.message}")
+                        Log.e("ChatInbox", "❌ Error clearing vanish messages: ${e.message}")
                     }
                 }
             }
@@ -754,7 +865,6 @@ private val messages = mutableListOf<MessageItem>()
         Log.d("ChatInbox", "Screenshot detection started")
     }
 
-    // Stop screenshot detection when activity is not visible
     override fun onPause() {
         super.onPause()
         screenshotDetector?.stopWatching()
