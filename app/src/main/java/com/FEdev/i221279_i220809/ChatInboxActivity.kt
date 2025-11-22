@@ -1003,6 +1003,108 @@ class ChatInboxActivity : AppCompatActivity() {
         })
     }
 
+    // ==================== SCREENSHOT NOTIFICATIONS ====================
+
+    /**
+     * Check for new screenshot notifications and add them as system messages
+     */
+    private fun checkForScreenshotNotifications() {
+        val authToken = sessionManager.getAuthToken() ?: return
+        
+        lifecycleScope.launch {
+            try {
+                val request = GetScreenshotNotificationsRequest(
+                    auth_token = authToken,
+                    mark_as_read = true
+                )
+                
+                val response = RetrofitClient.apiService.getScreenshotNotifications(request)
+                
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+                    
+                    if (data != null && data.notifications.isNotEmpty()) {
+                        // Check for new screenshot notifications
+                        data.notifications.forEach { notification ->
+                            // Only add notifications that are recent (last 10 minutes) and from our current chat
+                            val timeDiff = System.currentTimeMillis() - notification.timestamp
+                            if (timeDiff < 600000) { // 10 minutes
+                                // Check if this notification is related to current chat
+                                val isCurrentChatParticipant = notification.screenshot_taker_id == currentUserId || 
+                                                             notification.screenshot_taker_id == targetUserId
+                                if (isCurrentChatParticipant) {
+                                    addScreenshotSystemMessage(notification.screenshot_taker_username)
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ChatInbox", "Error checking screenshot notifications: ${e.message}", e)
+            }
+        }
+    }
+    
+    /**
+     * Add screenshot notification as system message to the chat
+     */
+    private fun addScreenshotSystemMessage(screenshotTakerUsername: String) {
+        val systemMessage = "$screenshotTakerUsername took a screenshot of this chat"
+        val timestamp = System.currentTimeMillis()
+        
+        // Check if this system message already exists (to avoid duplicates)
+        val existingSystemMessage = messages.any { 
+            it.message_type == "system" && 
+            it.message_text == systemMessage &&
+            (timestamp - it.timestamp) < 60000 // Within last minute
+        }
+        
+        if (!existingSystemMessage) {
+            // Insert into local database
+            val localId = messageDB.insertMessage(
+                messageId = 0,
+                threadId = threadId,
+                senderId = -1, // System messages use -1
+                receiverId = -1,
+                messageText = systemMessage,
+                messageType = "system",
+                mediaBase64 = null,
+                fileName = null,
+                fileSize = null,
+                timestamp = timestamp,
+                vanishMode = false,
+                synced = true,
+                pendingUpload = false
+            )
+            
+            // Add to UI
+            val systemMessageItem = MessageItem(
+                message_id = localId.toInt(),
+                sender_id = -1,
+                receiver_id = -1,
+                message_text = systemMessage,
+                message_type = "system",
+                media_base64 = null,
+                file_name = null,
+                file_size = null,
+                timestamp = timestamp,
+                edited = false,
+                edited_at = null,
+                is_deleted = false,
+                vanish_mode = false,
+                seen = true,
+                seen_at = timestamp
+            )
+            
+            runOnUiThread {
+                messages.add(systemMessageItem)
+                adapter.notifyItemInserted(messages.size - 1)
+                scrollToBottom()
+                Log.d("ChatInbox", "✅ Screenshot system message added to chat")
+            }
+        }
+    }
+
     // ==================== LIFECYCLE ====================
 
     override fun onBackPressed() {
