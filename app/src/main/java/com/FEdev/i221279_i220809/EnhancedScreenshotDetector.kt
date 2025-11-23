@@ -31,6 +31,9 @@ class ScreenshotDetector(
     private val handler = Handler(Looper.getMainLooper())
     private var lastDetectedTime = 0L
     private val sessionManager = SessionManager(context)
+    // Callback to notify chat screen when a system message is inserted
+    var onSystemMessageInserted: ((message: String, timestamp: Long) -> Unit)? = null
+
 
     companion object {
         private const val TAG = "ScreenshotDetector"
@@ -48,6 +51,8 @@ class ScreenshotDetector(
      * Start monitoring for screenshots
      */
     fun startWatching() {
+        Log.d(TAG, "📱 Starting screenshot detection...")
+        
         if (contentObserver != null) {
             Log.d(TAG, "Already watching for screenshots")
             return
@@ -55,8 +60,11 @@ class ScreenshotDetector(
 
         // Check if we have permission to read external storage
         if (!hasStoragePermission()) {
-            Log.e(TAG, "No storage permission")
+            Log.e(TAG, "❌ No storage permission - screenshot detection will not work")
+            Log.e(TAG, "Please grant storage permission in app settings")
             return
+        } else {
+            Log.d(TAG, "✅ Storage permission granted")
         }
 
         contentObserver = object : ContentObserver(handler) {
@@ -99,9 +107,12 @@ class ScreenshotDetector(
      * Handle media changes
      */
     private fun handleMediaChange(uri: Uri) {
+        Log.d(TAG, "📷 Media change detected: $uri")
         if (isScreenshotPath(uri)) {
-            Log.d(TAG, "📸 Screenshot detected!")
+            Log.d(TAG, "📸 Screenshot confirmed! Creating system message...")
             onScreenshotDetected()
+        } else {
+            Log.d(TAG, "📷 Media change was not a screenshot")
         }
     }
 
@@ -109,11 +120,8 @@ class ScreenshotDetector(
      * Called when a screenshot is detected
      */
     private fun onScreenshotDetected() {
-        // Show local notification
-        showLocalNotification()
-
-        // Send notification to other user via web service
-        sendScreenshotNotificationToServer()
+        // Insert system message directly into the chat
+        insertScreenshotSystemMessage()
     }
 
     /**
@@ -135,51 +143,30 @@ class ScreenshotDetector(
     }
 
     /**
-     * Send screenshot notification to server
-     * Server will handle notifying the other user
+     * Insert system message into the current chat
      */
-    private fun sendScreenshotNotificationToServer() {
-        val authToken = sessionManager.getAuthToken()
-        val currentUserId = sessionManager.getUserId()
+    private fun insertScreenshotSystemMessage() {
         val currentUsername = sessionManager.getUsername()
-
-        if (authToken == null || currentUsername == null) {
-            Log.e(TAG, "Cannot send notification - not logged in")
+        
+        Log.d(TAG, "💾 Attempting to create system message...")
+        Log.d(TAG, "👤 Current username: $currentUsername")
+        
+        if (currentUsername == null) {
+            Log.e(TAG, "❌ Cannot create system message - not logged in")
             return
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val request = ScreenshotNotificationRequest(
-                    auth_token = authToken,
-                    target_user_id = targetUserId,
-                    screenshot_taker_id = currentUserId,
-                    screenshot_taker_username = currentUsername
-                )
-
-                Log.d(TAG, "Sending screenshot notification to server...")
-                Log.d(TAG, "From: $currentUsername (ID: $currentUserId)")
-                Log.d(TAG, "To: $targetUsername (ID: $targetUserId)")
-
-                val response = RetrofitClient.apiService.sendScreenshotNotification(request)
-
-                if (response.isSuccessful && response.body()?.success == true) {
-                    Log.d(TAG, "✅ Screenshot notification sent successfully")
-
-                    // Show confirmation to the screenshot taker
-                    handler.post {
-                        android.widget.Toast.makeText(
-                            context,
-                            "$targetUsername will be notified",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } else {
-                    Log.e(TAG, "❌ Failed to send notification: ${response.body()?.message}")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Error sending notification: ${e.message}", e)
-            }
+        val systemMessage = "$currentUsername took a screenshot of this chat"
+        val timestamp = System.currentTimeMillis()
+        
+        Log.d(TAG, "📝 System message: $systemMessage")
+        Log.d(TAG, "⏰ Timestamp: $timestamp")
+        Log.d(TAG, "🔄 Callback available: ${onSystemMessageInserted != null}")
+        
+        // Notify the chat activity to add this system message
+        handler.post {
+            Log.d(TAG, "📤 Invoking callback to add system message to chat")
+            onSystemMessageInserted?.invoke(systemMessage, timestamp)
         }
     }
 
@@ -189,9 +176,11 @@ class ScreenshotDetector(
     private fun isScreenshotPath(uri: Uri): Boolean {
         try {
             val currentTime = System.currentTimeMillis()
+            Log.d(TAG, "🔍 Checking if URI is screenshot: $uri")
 
             // Debounce: prevent duplicate detections
             if (currentTime - lastDetectedTime < DEBOUNCE_TIME) {
+                Log.d(TAG, "⏰ Debouncing - too soon since last detection")
                 return false
             }
 
@@ -224,20 +213,30 @@ class ScreenshotDetector(
                         it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
                     ) * 1000 // Convert to milliseconds
 
+                    Log.d(TAG, "📂 File: $displayName")
+                    Log.d(TAG, "📁 Path: $dataPath")
+                    Log.d(TAG, "⏰ Age: ${(currentTime - dateAdded) / 1000} seconds")
+
                     // Check if image was added recently (within last 3 seconds)
                     if (currentTime - dateAdded > MAX_TIME_DIFF) {
+                        Log.d(TAG, "⏰ File too old - not a recent screenshot")
                         return false
                     }
 
                     // Check if path contains screenshot keywords
                     val isScreenshot = SCREENSHOT_KEYWORDS.any { keyword ->
-                        displayName.contains(keyword) || dataPath.contains(keyword)
+                        val nameMatch = displayName.contains(keyword)
+                        val pathMatch = dataPath.contains(keyword)
+                        Log.d(TAG, "🔍 Checking keyword '$keyword': name=$nameMatch, path=$pathMatch")
+                        nameMatch || pathMatch
                     }
 
                     if (isScreenshot) {
                         lastDetectedTime = currentTime
-                        Log.d(TAG, "✅ Screenshot detected: $displayName")
+                        Log.d(TAG, "✅ Screenshot confirmed: $displayName")
                         return true
+                    } else {
+                        Log.d(TAG, "❌ No screenshot keywords found")
                     }
                 }
             }

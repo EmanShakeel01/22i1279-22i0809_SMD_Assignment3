@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.FEdev.i221279_i220809.models.MessageItem
 import java.text.SimpleDateFormat
@@ -24,19 +25,31 @@ class NewChatAdapter(
 
     private val TYPE_SENT = 1
     private val TYPE_RECEIVED = 2
+    private val TYPE_SYSTEM = 3
 
     override fun getItemViewType(position: Int): Int {
-        // Explicit comparison to avoid 'operator' warning
-        return if (messages[position].sender_id == currentUserId) TYPE_SENT else TYPE_RECEIVED
+        val message = messages[position]
+        return when {
+            message.message_type == "system" -> TYPE_SYSTEM
+            message.sender_id == currentUserId -> TYPE_SENT
+            else -> TYPE_RECEIVED
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return if (viewType == TYPE_SENT) {
-            val view = LayoutInflater.from(context).inflate(R.layout.item_message_sent, parent, false)
-            SentViewHolder(view)
-        } else {
-            val view = LayoutInflater.from(context).inflate(R.layout.item_message_received, parent, false)
-            ReceivedViewHolder(view)
+        return when (viewType) {
+            TYPE_SENT -> {
+                val view = LayoutInflater.from(context).inflate(R.layout.item_message_sent, parent, false)
+                SentViewHolder(view)
+            }
+            TYPE_SYSTEM -> {
+                val view = LayoutInflater.from(context).inflate(R.layout.item_message_received, parent, false)
+                SystemViewHolder(view)
+            }
+            else -> {
+                val view = LayoutInflater.from(context).inflate(R.layout.item_message_received, parent, false)
+                ReceivedViewHolder(view)
+            }
         }
     }
 
@@ -45,19 +58,24 @@ class NewChatAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messages[position]
 
-        val timeSince = System.currentTimeMillis() - message.timestamp
-        val canEditOrDelete = timeSince <= 5 * 60 * 1000 // 5 minutes
-
-        if (holder is SentViewHolder) {
-            holder.bind(message, canEditOrDelete)
-        } else if (holder is ReceivedViewHolder) {
-            holder.bind(message)
+        when (holder) {
+            is SystemViewHolder -> {
+                holder.bind(message)
+            }
+            is SentViewHolder -> {
+                val timeSince = System.currentTimeMillis() - message.timestamp
+                val canEditOrDelete = timeSince <= 5 * 60 * 1000 // 5 minutes
+                holder.bind(message, canEditOrDelete)
+            }
+            is ReceivedViewHolder -> {
+                holder.bind(message)
+            }
         }
     }
 
     inner class SentViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private val textMessage: TextView = view.findViewById(R.id.textMessage)
-        private val imageMessage: ImageView = view.findViewById(R.id.imageMessage)
+        val textMessage: TextView = view.findViewById(R.id.textMessage)
+        val imageMessage: ImageView = view.findViewById(R.id.imageMessage)
         private val videoThumbnail: ImageView? = view.findViewById(R.id.videoThumbnail)  // Add to layout if missing
         private val fileInfo: TextView? = view.findViewById(R.id.fileInfo)  // Add to layout if missing
         private val timeText: TextView = view.findViewById(R.id.messageTime)  // Add to layout if missing
@@ -134,8 +152,8 @@ class NewChatAdapter(
     }
 
     inner class ReceivedViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private val textMessage: TextView = view.findViewById(R.id.textMessage)
-        private val imageMessage: ImageView = view.findViewById(R.id.imageMessage)
+        val textMessage: TextView = view.findViewById(R.id.textMessage)
+        val imageMessage: ImageView = view.findViewById(R.id.imageMessage)
         private val videoThumbnail: ImageView? = view.findViewById(R.id.videoThumbnail)  // Add to layout if missing
         private val fileInfo: TextView? = view.findViewById(R.id.fileInfo)  // Add to layout if missing
         private val timeText: TextView = view.findViewById(R.id.messageTime)  // Add to layout if missing
@@ -190,6 +208,29 @@ class NewChatAdapter(
     private fun formatTime(timestamp: Long): String {
         val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
         return dateFormat.format(Date(timestamp))
+    }
+
+    inner class SystemViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val textMessage: TextView = view.findViewById(R.id.textMessage)
+        private val timeText: TextView = view.findViewById(R.id.messageTime)
+
+        fun bind(message: MessageItem) {
+            textMessage.text = message.message_text
+            textMessage.visibility = View.VISIBLE
+            textMessage.textAlignment = View.TEXT_ALIGNMENT_CENTER
+            textMessage.setTextColor(ContextCompat.getColor(context, android.R.color.darker_gray))
+            textMessage.setTypeface(null, android.graphics.Typeface.ITALIC)
+            textMessage.textSize = 12f
+            
+            timeText.text = formatTime(message.timestamp)
+            timeText.visibility = View.VISIBLE
+            
+            // Make the entire container centered and transparent
+            itemView.background = null
+            
+            // Hide any other views that might exist
+            itemView.findViewById<ImageView>(R.id.imageMessage)?.visibility = View.GONE
+        }
     }
 
     private fun formatFileSize(bytes: Int): String {

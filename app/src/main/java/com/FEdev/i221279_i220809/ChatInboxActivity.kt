@@ -3,15 +3,19 @@ package com.FEdev.i221279_i220809
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -54,6 +58,7 @@ class ChatInboxActivity : AppCompatActivity() {
     private val PICK_IMAGE_REQUEST = 1
     private val PICK_VIDEO_REQUEST = 2
     private val PICK_FILE_REQUEST = 3
+    private val STORAGE_PERMISSION_REQUEST = 100
 
     private var pollingJob: kotlinx.coroutines.Job? = null
     private var isSendingMessage = false
@@ -94,6 +99,14 @@ class ChatInboxActivity : AppCompatActivity() {
             targetUserId = targetUserId,
             targetUsername = targetName
         )
+        
+        // Set callback for when screenshot system messages are created
+        screenshotDetector?.onSystemMessageInserted = { message, timestamp ->
+            addScreenshotSystemMessage(message, timestamp)
+        }
+        
+        // Check and request storage permission for screenshot detection
+        checkAndRequestStoragePermission()
 
         bindViews()
         setupRecycler()
@@ -280,9 +293,6 @@ class ChatInboxActivity : AppCompatActivity() {
                                 lastMessageId = msg.message_id
                             }
                         }
-
-                        // Check for new screenshot notifications and add as system messages
-                        checkForScreenshotNotifications()
 
                         // If there are new messages, add them to UI immediately for better responsiveness
                         if (hasNewMessages && newServerMessages.isNotEmpty()) {
@@ -944,6 +954,93 @@ class ChatInboxActivity : AppCompatActivity() {
         Toast.makeText(this, "File upload - implement", Toast.LENGTH_SHORT).show()
     }
 
+    // ==================== STORAGE PERMISSION FOR SCREENSHOTS ====================
+    
+    /**
+     * Check if storage permission is granted, request if not
+     */
+    private fun checkAndRequestStoragePermission() {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            android.Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            android.Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        
+        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            Log.d("ChatInbox", "📱 Storage permission not granted - requesting permission")
+            
+            // Show explanation dialog if needed
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+                showStoragePermissionExplanation(permission)
+            } else {
+                // Request permission directly
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(permission),
+                    STORAGE_PERMISSION_REQUEST
+                )
+            }
+        } else {
+            Log.d("ChatInbox", "✅ Storage permission already granted")
+            // Permission already granted, start screenshot detection
+            startScreenshotDetection()
+        }
+    }
+    
+    /**
+     * Show explanation dialog for storage permission
+     */
+    private fun showStoragePermissionExplanation(permission: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Storage Permission Required")
+            .setMessage("Screenshot detection requires access to your device's media files. This allows the app to detect when you or others take screenshots during the chat.")
+            .setPositiveButton("Grant Permission") { _, _ ->
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(permission),
+                    STORAGE_PERMISSION_REQUEST
+                )
+            }
+            .setNegativeButton("Skip") { _, _ ->
+                Log.d("ChatInbox", "⚠️ User declined storage permission - screenshot detection disabled")
+                Toast.makeText(this, "Screenshot detection disabled", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+    
+    /**
+     * Handle permission request result
+     */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        when (requestCode) {
+            STORAGE_PERMISSION_REQUEST -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d("ChatInbox", "✅ Storage permission granted by user")
+                    Toast.makeText(this, "Screenshot detection enabled", Toast.LENGTH_SHORT).show()
+                    startScreenshotDetection()
+                } else {
+                    Log.d("ChatInbox", "❌ Storage permission denied by user")
+                    Toast.makeText(this, "Screenshot detection disabled", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    /**
+     * Start screenshot detection after permission is granted
+     */
+    private fun startScreenshotDetection() {
+        Log.d("ChatInbox", "🔄 Starting screenshot detection...")
+        screenshotDetector?.startWatching()
+        Log.d("ChatInbox", "✅ Screenshot detection started")
+    }
+
     // ==================== CALLS ====================
 
     private fun startCallToTarget(isVideo: Boolean) {
@@ -1003,108 +1100,6 @@ class ChatInboxActivity : AppCompatActivity() {
         })
     }
 
-    // ==================== SCREENSHOT NOTIFICATIONS ====================
-
-    /**
-     * Check for new screenshot notifications and add them as system messages
-     */
-    private fun checkForScreenshotNotifications() {
-        val authToken = sessionManager.getAuthToken() ?: return
-        
-        lifecycleScope.launch {
-            try {
-                val request = GetScreenshotNotificationsRequest(
-                    auth_token = authToken,
-                    mark_as_read = true
-                )
-                
-                val response = RetrofitClient.apiService.getScreenshotNotifications(request)
-                
-                if (response.isSuccessful && response.body()?.success == true) {
-                    val data = response.body()?.data
-                    
-                    if (data != null && data.notifications.isNotEmpty()) {
-                        // Check for new screenshot notifications
-                        data.notifications.forEach { notification ->
-                            // Only add notifications that are recent (last 10 minutes) and from our current chat
-                            val timeDiff = System.currentTimeMillis() - notification.timestamp
-                            if (timeDiff < 600000) { // 10 minutes
-                                // Check if this notification is related to current chat
-                                val isCurrentChatParticipant = notification.screenshot_taker_id == currentUserId || 
-                                                             notification.screenshot_taker_id == targetUserId
-                                if (isCurrentChatParticipant) {
-                                    addScreenshotSystemMessage(notification.screenshot_taker_username)
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("ChatInbox", "Error checking screenshot notifications: ${e.message}", e)
-            }
-        }
-    }
-    
-    /**
-     * Add screenshot notification as system message to the chat
-     */
-    private fun addScreenshotSystemMessage(screenshotTakerUsername: String) {
-        val systemMessage = "$screenshotTakerUsername took a screenshot of this chat"
-        val timestamp = System.currentTimeMillis()
-        
-        // Check if this system message already exists (to avoid duplicates)
-        val existingSystemMessage = messages.any { 
-            it.message_type == "system" && 
-            it.message_text == systemMessage &&
-            (timestamp - it.timestamp) < 60000 // Within last minute
-        }
-        
-        if (!existingSystemMessage) {
-            // Insert into local database
-            val localId = messageDB.insertMessage(
-                messageId = 0,
-                threadId = threadId,
-                senderId = -1, // System messages use -1
-                receiverId = -1,
-                messageText = systemMessage,
-                messageType = "system",
-                mediaBase64 = null,
-                fileName = null,
-                fileSize = null,
-                timestamp = timestamp,
-                vanishMode = false,
-                synced = true,
-                pendingUpload = false
-            )
-            
-            // Add to UI
-            val systemMessageItem = MessageItem(
-                message_id = localId.toInt(),
-                sender_id = -1,
-                receiver_id = -1,
-                message_text = systemMessage,
-                message_type = "system",
-                media_base64 = null,
-                file_name = null,
-                file_size = null,
-                timestamp = timestamp,
-                edited = false,
-                edited_at = null,
-                is_deleted = false,
-                vanish_mode = false,
-                seen = true,
-                seen_at = timestamp
-            )
-            
-            runOnUiThread {
-                messages.add(systemMessageItem)
-                adapter.notifyItemInserted(messages.size - 1)
-                scrollToBottom()
-                Log.d("ChatInbox", "✅ Screenshot system message added to chat")
-            }
-        }
-    }
-
     // ==================== LIFECYCLE ====================
 
     override fun onBackPressed() {
@@ -1133,8 +1128,8 @@ class ChatInboxActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        screenshotDetector?.startWatching()
-        Log.d("ChatInbox", "Screenshot detection started")
+        // Screenshot detection is started after permission is granted
+        Log.d("ChatInbox", "Chat activity resumed")
 
         // Refresh messages when returning to chat
         loadCachedMessages()
@@ -1147,6 +1142,74 @@ class ChatInboxActivity : AppCompatActivity() {
         super.onPause()
         screenshotDetector?.stopWatching()
         Log.d("ChatInbox", "Screenshot detection stopped")
+    }
+
+    /**
+     * Add screenshot system message to the chat
+     */
+    private fun addScreenshotSystemMessage(systemMessage: String, timestamp: Long) {
+        Log.d("ChatInbox", "📨 Received system message callback: $systemMessage")
+        
+        // Check if this system message already exists (to avoid duplicates)
+        val existingSystemMessage = messages.any { 
+            it.message_type == "system" && 
+            it.message_text == systemMessage &&
+            (timestamp - it.timestamp) < 60000 // Within last minute
+        }
+        
+        Log.d("ChatInbox", "🔍 Duplicate check: exists=$existingSystemMessage")
+        
+        if (!existingSystemMessage) {
+            Log.d("ChatInbox", "💾 Inserting system message to database...")
+            
+            // Insert into local database
+            val localId = messageDB.insertMessage(
+                messageId = 0,
+                threadId = threadId,
+                senderId = -1, // System messages use -1
+                receiverId = -1,
+                messageText = systemMessage,
+                messageType = "system",
+                mediaBase64 = null,
+                fileName = null,
+                fileSize = null,
+                timestamp = timestamp,
+                vanishMode = false,
+                synced = true,
+                pendingUpload = false
+            )
+            
+            Log.d("ChatInbox", "✅ Database insert completed with ID: $localId")
+            
+            // Add to UI
+            val systemMessageItem = MessageItem(
+                message_id = localId.toInt(),
+                sender_id = -1,
+                receiver_id = -1,
+                message_text = systemMessage,
+                message_type = "system",
+                media_base64 = null,
+                file_name = null,
+                file_size = null,
+                timestamp = timestamp,
+                edited = false,
+                edited_at = null,
+                is_deleted = false,
+                vanish_mode = false,
+                seen = true,
+                seen_at = timestamp
+            )
+            
+            Log.d("ChatInbox", "📱 Adding message to UI (position ${messages.size})...")
+            
+            messages.add(systemMessageItem)
+            adapter.notifyItemInserted(messages.size - 1)
+            scrollToBottom()
+            
+            Log.d("ChatInbox", "✅ Screenshot system message added to chat successfully")
+        } else {
+            Log.d("ChatInbox", "⚠️ Duplicate system message detected - skipping")
+        }
     }
 
     override fun onDestroy() {

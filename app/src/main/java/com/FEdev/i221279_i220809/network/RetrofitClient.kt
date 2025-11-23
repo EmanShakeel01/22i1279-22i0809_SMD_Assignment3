@@ -1,5 +1,6 @@
 package com.FEdev.i221279_i220809.network
 
+import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -12,7 +13,7 @@ object RetrofitClient {
     // For local development on emulator: "http://10.0.2.2/socially_api/api/"
     // For local development on real device: "http://YOUR_COMPUTER_IP/socially_api/api/"
     // For ngrok: Get fresh URL from ngrok and update here
-    private const val BASE_URL = "https://unmatted-idolisingly-derick.ngrok-free.dev/socially_api/api/"
+    private const val BASE_URL = " https://unmatted-idolisingly-derick.ngrok-free.dev/socially_api/api/"
     
     // Backup URLs in case primary fails (no network operations during init)
     private val BACKUP_URLS = arrayOf(
@@ -53,10 +54,15 @@ object RetrofitClient {
         .retryOnConnectionFailure(true)        // Add retry on failure
         .build()
 
+    // Create lenient Gson instance to handle malformed JSON
+    private val gson = GsonBuilder()
+        .setLenient()  // Allow malformed JSON
+        .create()
+
     private val retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)
         .client(client)
-        .addConverterFactory(GsonConverterFactory.create())
+        .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
 
     val apiService: ApiService = retrofit.create(ApiService::class.java)

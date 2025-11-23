@@ -18,7 +18,9 @@
             android:layout_height="wrap_content"
             android:textColor="@android:color/white"
             android:textSize="14sp"
-            android:visibility="gone" />  <!-- Start gone, shown in code -->
+            android:visibility="gone"
+            android:textAlignment="center"
+            android:gravity="center"/>  <!-- Start gone, shown in code -->
 
         <ImageView
             android:id="@+id/imageMessage"
