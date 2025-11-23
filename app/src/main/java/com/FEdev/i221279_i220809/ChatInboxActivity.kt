@@ -1109,8 +1109,14 @@ class ChatInboxActivity : AppCompatActivity() {
 
     private fun listenForIncomingCalls() {
         val currentUserIdString = currentUserId.toString()
+        val currentUserEmail = sessionManager.getEmail()
+        val currentFirebaseUid = FirebaseAuth.getInstance().currentUser?.uid
+        
         Log.d("ChatInbox", "=== Starting incoming call listener ===" )
-        Log.d("ChatInbox", "Listening for calls to user ID: $currentUserIdString")
+        Log.d("ChatInbox", "Listening for calls to:")
+        Log.d("ChatInbox", "  - User ID: $currentUserIdString")
+        Log.d("ChatInbox", "  - Email: $currentUserEmail")
+        Log.d("ChatInbox", "  - Firebase UID: $currentFirebaseUid")
         
         val callsRef = FirebaseDatabase.getInstance(
             "https://i1279-22i0809-assignment2-default-rtdb.firebaseio.com/"
@@ -1121,19 +1127,34 @@ class ChatInboxActivity : AppCompatActivity() {
                 Log.d("ChatInbox", "📞 Raw Firebase snapshot: ${snapshot.value}")
                 Log.d("ChatInbox", "📞 Available keys: ${snapshot.children.map { it.key }}")
                 
-                // Safely get calleeId as string first, then try to convert to int
+                // Handle multiple call data formats
                 val calleeIdString = snapshot.child("calleeId").getValue(String::class.java)
                 val calleeIdInt = try {
                     calleeIdString?.toIntOrNull()
                 } catch (e: Exception) {
                     null
                 }
+                
+                // Handle email-based format (old system)
+                val toId = snapshot.child("toId").getValue(String::class.java)
+                val toEmail = snapshot.child("to").getValue(String::class.java)
+                
                 val status = snapshot.child("status").getValue(String::class.java)
                 
-                Log.d("ChatInbox", "📞 Call event detected: calleeIdString=$calleeIdString, calleeIdInt=$calleeIdInt, status=$status")
-                Log.d("ChatInbox", "Current user ID: $currentUserIdString (as int: $currentUserId)")
+                Log.d("ChatInbox", "📞 Call event detected: calleeIdString=$calleeIdString, calleeIdInt=$calleeIdInt, toId=$toId, status=$status")
+                Log.d("ChatInbox", "Current identifiers: userID=$currentUserIdString, email=$currentUserEmail, firebaseUID=$currentFirebaseUid")
                 
-                val isIncomingCall = (calleeIdString == currentUserIdString) || (calleeIdInt == currentUserId)
+                // Check if this call is for the current user (multiple formats)
+                val isIncomingCall = when {
+                    // Format 1: Database user ID (integer or string)
+                    calleeIdString == currentUserIdString || calleeIdInt == currentUserId -> true
+                    // Format 2: Firebase Auth UID
+                    currentFirebaseUid != null && calleeIdString == currentFirebaseUid -> true
+                    // Format 3: Email-based (old system)
+                    toId != null && currentUserEmail != null && toId.replace("_at_", "@").replace("_com", ".com") == currentUserEmail -> true
+                    toEmail != null && currentUserEmail != null && toEmail == currentUserEmail -> true
+                    else -> false
+                }
                 
                 if (isIncomingCall && status == "ringing") {
                     Log.d("ChatInbox", "✅ INCOMING CALL FOR THIS USER!")
@@ -1149,8 +1170,16 @@ class ChatInboxActivity : AppCompatActivity() {
                     }
                     
                     val channelName = snapshot.key ?: return
-                    val isVideo = snapshot.child("type").getValue(String::class.java) == "video"
-                    val callerName = snapshot.child("callerName").getValue(String::class.java) ?: "Unknown"
+                    val isVideo = when (val type = snapshot.child("type").getValue(String::class.java)) {
+                        "video" -> true
+                        "voice" -> false
+                        else -> true
+                    }
+                    
+                    // Get caller name from multiple possible fields
+                    val callerName = snapshot.child("callerName").getValue(String::class.java)
+                        ?: snapshot.child("from").getValue(String::class.java)
+                        ?: "Unknown Caller"
                     
                     Log.d("ChatInbox", "✅ Incoming call detected!")
                     Log.d("ChatInbox", "Channel: $channelName")
@@ -1185,6 +1214,35 @@ class ChatInboxActivity : AppCompatActivity() {
         })
         
         Log.d("ChatInbox", "✅ Incoming call listener started")
+        
+        // Clean up old call records (older than 10 minutes) to reduce noise
+        cleanupOldCallRecords()
+    }
+    
+    private fun cleanupOldCallRecords() {
+        val callsRef = FirebaseDatabase.getInstance(
+            "https://i1279-22i0809-assignment2-default-rtdb.firebaseio.com/"
+        ).reference.child("calls")
+        
+        val tenMinutesAgo = System.currentTimeMillis() - (10 * 60 * 1000) // 10 minutes
+        
+        callsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                for (child in snapshot.children) {
+                    val timestamp = child.child("timestamp").getValue(Long::class.java) ?: continue
+                    val status = child.child("status").getValue(String::class.java)
+                    
+                    // Remove old completed calls
+                    if (timestamp < tenMinutesAgo && (status == "ended" || status == "declined")) {
+                        child.ref.removeValue()
+                        Log.d("ChatInbox", "🗑️ Cleaned up old call record: ${child.key}")
+                    }
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ChatInbox", "Failed to cleanup old calls: ${error.message}")
+            }
+        })
     }
 
     // ==================== LIFECYCLE ====================
