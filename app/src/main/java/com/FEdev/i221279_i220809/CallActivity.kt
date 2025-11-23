@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
 import io.agora.rtc2.*
 import io.agora.rtc2.video.VideoCanvas
+import io.agora.rtc2.video.VideoEncoderConfiguration
 
 class CallActivity : AppCompatActivity() {
 
@@ -182,22 +183,60 @@ class CallActivity : AppCompatActivity() {
                         Log.d("CallActivity", "✅ Successfully joined channel: $channel with UID: $uid (elapsed: ${elapsed}ms)")
                     }
 
+                    override fun onLeaveChannel(stats: RtcStats?) {
+                        Log.d("CallActivity", "📤 Left channel. Duration: ${stats?.totalDuration}s")
+                    }
+
+                    override fun onRemoteVideoStateChanged(uid: Int, state: Int, reason: Int, elapsed: Int) {
+                        Log.d("CallActivity", "📹 Remote video state changed: uid=$uid, state=$state, reason=$reason")
+                    }
+
+                    override fun onLocalVideoStateChanged(source: Constants.VideoSourceType?, state: Int, error: Int) {
+                        Log.d("CallActivity", "📹 Local video state changed: state=$state, error=$error")
+                    }
+
+                    override fun onAudioVolumeIndication(speakers: Array<out AudioVolumeInfo>?, totalVolume: Int) {
+                        // Log.d("CallActivity", "🔊 Audio volume: $totalVolume")
+                        // Don't log this too frequently
+                    }
+
                     override fun onError(err: Int) {
                         Log.e("CallActivity", "❌ Agora error code: $err")
                         when (err) {
-                            101 -> Log.e("CallActivity", "❌ Invalid App ID")
-                            102 -> Log.e("CallActivity", "❌ Invalid channel name")
-                            103 -> Log.e("CallActivity", "❌ Invalid token")
-                            else -> Log.e("CallActivity", "❌ Unknown Agora error: $err")
-                        }
-                        
-                        runOnUiThread {
-                            Toast.makeText(this@CallActivity, "Call failed: Error $err", Toast.LENGTH_SHORT).show()
+                            101 -> {
+                                Log.e("CallActivity", "❌ Invalid App ID")
+                                runOnUiThread { Toast.makeText(this@CallActivity, "Invalid App ID", Toast.LENGTH_SHORT).show() }
+                            }
+                            102 -> {
+                                Log.e("CallActivity", "❌ Invalid channel name")
+                                runOnUiThread { Toast.makeText(this@CallActivity, "Invalid channel", Toast.LENGTH_SHORT).show() }
+                            }
+                            103 -> {
+                                Log.e("CallActivity", "❌ Invalid token")
+                                runOnUiThread { Toast.makeText(this@CallActivity, "Token error", Toast.LENGTH_SHORT).show() }
+                            }
+                            110 -> {
+                                Log.e("CallActivity", "❌ Token expired or network issue")
+                                Log.d("CallActivity", "💡 Retrying without token...")
+                                // Don't end call immediately, let it retry
+                                runOnUiThread { Toast.makeText(this@CallActivity, "Connection issue, retrying...", Toast.LENGTH_SHORT).show() }
+                            }
+                            else -> {
+                                Log.e("CallActivity", "❌ Unknown Agora error: $err")
+                                runOnUiThread { Toast.makeText(this@CallActivity, "Call error: $err", Toast.LENGTH_SHORT).show() }
+                            }
                         }
                     }
 
                     override fun onConnectionStateChanged(state: Int, reason: Int) {
                         Log.d("CallActivity", "🌐 Connection state changed: state=$state, reason=$reason")
+                        when (state) {
+                            1 -> Log.d("CallActivity", "🔄 Disconnected")
+                            2 -> Log.d("CallActivity", "🔄 Connecting")
+                            3 -> Log.d("CallActivity", "✅ Connected")
+                            4 -> Log.d("CallActivity", "🔄 Reconnecting")
+                            5 -> Log.d("CallActivity", "❌ Failed")
+                        }
                     }
                 }
             }
@@ -212,26 +251,48 @@ class CallActivity : AppCompatActivity() {
             return
         }
 
-        // ✅ Enable audio first
-        Log.d("CallActivity", "🎤 Enabling audio...")
+        // ✅ Enable audio first with better configuration
+        Log.d("CallActivity", "🎤 Configuring audio...")
         rtcEngine?.enableAudio()
+        
+        // Set audio profile for better quality
+        rtcEngine?.setAudioProfile(Constants.AUDIO_PROFILE_DEFAULT, Constants.AUDIO_SCENARIO_DEFAULT)
+        
+        // Route audio to speaker for calls
         rtcEngine?.setDefaultAudioRoutetoSpeakerphone(true)
+        
+        // Set volume levels
         rtcEngine?.adjustRecordingSignalVolume(100)
         rtcEngine?.adjustPlaybackSignalVolume(100)
-        Log.d("CallActivity", "✅ Audio enabled")
+        
+        // Enable audio volume indication
+        rtcEngine?.enableAudioVolumeIndication(1000, 3, true)
+        
+        Log.d("CallActivity", "✅ Audio configured")
 
         // ✅ Enable video if needed
         if (isVideo) {
-            Log.d("CallActivity", "📹 Enabling video...")
+            Log.d("CallActivity", "📹 Configuring video...")
             rtcEngine?.enableVideo()
+            
+            // Set video configuration for better quality
+            val videoConfig = VideoEncoderConfiguration(
+                VideoEncoderConfiguration.VD_640x360,
+                VideoEncoderConfiguration.FRAME_RATE.FRAME_RATE_FPS_15,
+                VideoEncoderConfiguration.STANDARD_BITRATE,
+                VideoEncoderConfiguration.ORIENTATION_MODE.ORIENTATION_MODE_FIXED_PORTRAIT
+            )
+            rtcEngine?.setVideoEncoderConfiguration(videoConfig)
+            
             setupLocalVideoView()
-            Log.d("CallActivity", "✅ Video enabled")
+            Log.d("CallActivity", "✅ Video configured")
         } else {
             Log.d("CallActivity", "🔇 Disabling video for voice call")
             rtcEngine?.disableVideo()
             removeLocalVideoViewIfAny()
         }
 
+        // Set unmuted initially
         isMuted = false
         rtcEngine?.muteLocalAudioStream(false)
 
@@ -244,8 +305,13 @@ class CallActivity : AppCompatActivity() {
             publishCameraTrack = isVideo
         }
 
-        Log.d("CallActivity", "🔗 Joining channel: $channelName")
-        rtcEngine?.joinChannel(null, channelName, 0, options)
+        // Generate a random UID for this user
+        val uid = (System.currentTimeMillis() % 1000000).toInt()
+        
+        Log.d("CallActivity", "🔗 Joining channel: $channelName with UID: $uid")
+        Log.d("CallActivity", "📊 Channel options: audio=${options.autoSubscribeAudio}, video=${options.autoSubscribeVideo}")
+        
+        rtcEngine?.joinChannel(null, channelName, uid, options)
         joined = true
         
         Log.d("CallActivity", "⏱️ Starting call timer")
@@ -284,15 +350,33 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun setupLocalVideoView() {
-        if (localSurfaceView != null) return
+        if (localSurfaceView != null) {
+            Log.d("CallActivity", "🖥️ Local video view already exists")
+            return
+        }
+        
+        Log.d("CallActivity", "🖥️ Creating local video view")
+        
         localSurfaceView = SurfaceView(baseContext)
         localSurfaceView?.setZOrderMediaOverlay(true)
-        findViewById<FrameLayout>(R.id.local_video_view_container).apply {
-            removeAllViews()
-            addView(localSurfaceView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        
+        val localContainer = findViewById<FrameLayout>(R.id.local_video_view_container)
+        localContainer.removeAllViews()
+        localContainer.addView(localSurfaceView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        
+        val canvas = VideoCanvas(localSurfaceView, VideoCanvas.RENDER_MODE_FIT, 0)
+        rtcEngine?.setupLocalVideo(canvas)
+        
+        // Start local preview
+        rtcEngine?.startPreview()
+        
+        Log.d("CallActivity", "✅ Local video view setup complete")
+        
+        // Make sure local container is visible
+        runOnUiThread {
+            localContainer.visibility = View.VISIBLE
+            Log.d("CallActivity", "🖥️ Local video container made visible")
         }
-        rtcEngine?.setupLocalVideo(VideoCanvas(localSurfaceView, VideoCanvas.RENDER_MODE_FIT, 0))
-        Log.d("CallActivity", "Local video view setup")
     }
 
     private fun removeLocalVideoViewIfAny() {
@@ -304,15 +388,30 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun setupRemoteVideo(uid: Int) {
-        if (remoteSurfaceView != null) return
+        if (remoteSurfaceView != null) {
+            Log.d("CallActivity", "🖥️ Remote video view already exists")
+            return
+        }
+        
+        Log.d("CallActivity", "🖥️ Creating remote video view for UID: $uid")
+        
         remoteSurfaceView = SurfaceView(baseContext)
         remoteSurfaceView?.setZOrderMediaOverlay(false)
-        findViewById<FrameLayout>(R.id.remote_video_view_container).apply {
-            removeAllViews()
-            addView(remoteSurfaceView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        
+        val remoteContainer = findViewById<FrameLayout>(R.id.remote_video_view_container)
+        remoteContainer.removeAllViews()
+        remoteContainer.addView(remoteSurfaceView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        
+        val canvas = VideoCanvas(remoteSurfaceView, VideoCanvas.RENDER_MODE_FIT, uid)
+        rtcEngine?.setupRemoteVideo(canvas)
+        
+        Log.d("CallActivity", "✅ Remote video view setup complete for UID: $uid")
+        
+        // Make sure remote container is visible
+        runOnUiThread {
+            remoteContainer.visibility = View.VISIBLE
+            Log.d("CallActivity", "🖥️ Remote video container made visible")
         }
-        rtcEngine?.setupRemoteVideo(VideoCanvas(remoteSurfaceView, VideoCanvas.RENDER_MODE_FIT, uid))
-        Log.d("CallActivity", "Remote video view setup for uid: $uid")
     }
 
     private fun applyCallModeToUI() {
