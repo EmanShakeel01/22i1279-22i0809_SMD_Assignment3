@@ -16,17 +16,18 @@ class IncomingCallActivity : AppCompatActivity() {
     private var channelName: String = ""
     private var ringtone: Ringtone? = null
     private var callListener: ValueEventListener? = null
+    private var isCallActive = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_incoming_call)
 
-        channelName = intent.getStringExtra("CHANNEL_NAME") ?: run { 
+        channelName = intent.getStringExtra("CHANNEL_NAME") ?: run {
             Log.e("IncomingCall", "No channel name provided")
             finish()
-            return 
+            return
         }
-        
+
         val isVideo = intent.getBooleanExtra("IS_VIDEO", true)
         val callerName = intent.getStringExtra("CALLER_NAME") ?: "Unknown Caller"
 
@@ -39,67 +40,125 @@ class IncomingCallActivity : AppCompatActivity() {
             "https://i1279-22i0809-assignment2-default-rtdb.firebaseio.com/"
         ).reference.child("calls").child(channelName)
 
+        setupUI(callerName, isVideo)
+        playRingtone()
+        watchCallStatus()
+    }
+
+    private fun setupUI(callerName: String, isVideo: Boolean) {
         val callerText = findViewById<TextView>(R.id.callerName)
         val acceptBtn = findViewById<Button>(R.id.acceptBtn)
         val declineBtn = findViewById<Button>(R.id.declineBtn)
 
-        // Set caller name immediately
-        callerText.text = callerName
+        // Display caller name and call type
+        val displayText = if (isVideo) {
+            "$callerName\n📹 Video Call"
+        } else {
+            "$callerName\n📞 Voice Call"
+        }
+        callerText.text = displayText
 
-        // 🔔 Play ringtone
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        ringtone = RingtoneManager.getRingtone(applicationContext, uri)
-        ringtone?.play()
-
-        // ✅ Accept Call
+        // Accept button
         acceptBtn.setOnClickListener {
-            Log.d("IncomingCall", "📞 Call accepted")
-            
-            db.child("status").setValue("accepted")
-            db.child("started").setValue(true)
-            db.child("startTime").setValue(ServerValue.TIMESTAMP)
-
-            val intent = Intent(this, CallActivity::class.java).apply {
-                putExtra("CHANNEL_NAME", channelName)
-                putExtra("IS_CALLER", false)
-                putExtra("IS_VIDEO", isVideo)
+            if (isCallActive) {
+                acceptCall(callerName, isVideo)
             }
-            
-            ringtone?.stop()
-            startActivity(intent)
-            finish()
         }
 
-        // ❌ Decline Call
+        // Decline button
         declineBtn.setOnClickListener {
-            Log.d("IncomingCall", "📞 Call declined")
-            
-            db.child("status").setValue("declined")
-            ringtone?.stop()
-            finish()
+            if (isCallActive) {
+                declineCall()
+            }
+        }
+    }
+
+    private fun playRingtone() {
+        try {
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            ringtone = RingtoneManager.getRingtone(applicationContext, uri)
+            ringtone?.play()
+            Log.d("IncomingCall", "Ringtone playing")
+        } catch (e: Exception) {
+            Log.e("IncomingCall", "Ringtone error: ${e.message}")
+        }
+    }
+
+    private fun acceptCall(callerName: String, isVideo: Boolean) {
+        if (!isCallActive) return
+
+        Log.d("IncomingCall", "Call accepted")
+        isCallActive = false
+
+        // Update Firebase status
+        db.child("status").setValue("accepted")
+        db.child("started").setValue(true)
+        db.child("startTime").setValue(ServerValue.TIMESTAMP)
+
+        // Start CallActivity
+        val intent = Intent(this, CallActivity::class.java).apply {
+            putExtra("CHANNEL_NAME", channelName)
+            putExtra("IS_CALLER", false)
+            putExtra("IS_VIDEO", isVideo)
+            putExtra("CONTACT_NAME", callerName)
         }
 
-        // 🔁 Watch if caller cancels
+        stopRingtone()
+        startActivity(intent)
+        finish()
+    }
+
+    private fun declineCall() {
+        if (!isCallActive) return
+
+        Log.d("IncomingCall", "Call declined")
+        isCallActive = false
+
+        db.child("status").setValue("declined")
+        stopRingtone()
+        finish()
+    }
+
+    private fun watchCallStatus() {
         callListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val status = snapshot.child("status").getValue(String::class.java)
-                Log.d("IncomingCall", "📞 Call status changed: $status")
-                
-                if (status == "ended" || status == "declined") {
-                    ringtone?.stop()
-                    finish()
+                Log.d("IncomingCall", "Status changed: $status")
+
+                // If caller cancels or ends the call
+                if (status == "ended" || status == "cancelled") {
+                    if (isCallActive) {
+                        Log.d("IncomingCall", "Call was cancelled by caller")
+                        isCallActive = false
+                        stopRingtone()
+                        finish()
+                    }
                 }
             }
+
             override fun onCancelled(error: DatabaseError) {
-                Log.e("IncomingCall", "❌ Call listener error: ${error.message}")
+                Log.e("IncomingCall", "Listener error: ${error.message}")
             }
         }
         db.addValueEventListener(callListener!!)
     }
 
+    private fun stopRingtone() {
+        try {
+            ringtone?.stop()
+            ringtone = null
+            Log.d("IncomingCall", "Ringtone stopped")
+        } catch (e: Exception) {
+            Log.e("IncomingCall", "Stop ringtone error: ${e.message}")
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        ringtone?.stop()
+        stopRingtone()
         callListener?.let { db.removeEventListener(it) }
+        Log.d("IncomingCall", "Activity destroyed")
     }
+
+
 }

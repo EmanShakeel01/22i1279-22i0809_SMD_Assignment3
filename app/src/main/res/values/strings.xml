@@ -1,6 +1,5 @@
 <resources>
-    <string name="app_name">Assignment1</string>
-
-    <string name="agora_app_id">10c1ed7781bd44b2826f160ab18e6580</string>
-
+    <string name="app_name">ChatApp</string>
+    <!-- Replace with your actual Agora App ID -->
+    <string name="agora_app_id">46628ea5961a41169fff2680909e9b0e</string>
 </resources>
