@@ -33,6 +33,7 @@ class CallActivity : AppCompatActivity() {
     private var isCaller = false
     private var isVideo = true
     private var joined = false
+    private var remoteUserJoined = false
 
     private val agoraAppId by lazy { getString(R.string.agora_app_id) }
 
@@ -87,7 +88,6 @@ class CallActivity : AppCompatActivity() {
                 val type = snapshot.child("type").getValue(String::class.java) ?: "video"
 
                 isVideo = (type == "video")
-                applyCallModeToUI()
 
                 if (status == "accepted" && !joined) {
                     initializeAndJoinChannel()
@@ -109,31 +109,52 @@ class CallActivity : AppCompatActivity() {
                 mAppId = agoraAppId
                 mEventHandler = object : IRtcEngineEventHandler() {
                     override fun onUserJoined(uid: Int, elapsed: Int) {
+                        Log.d("CallActivity", "Remote user joined: $uid")
+                        remoteUserJoined = true
                         runOnUiThread { setupRemoteVideo(uid) }
                     }
 
                     override fun onUserOffline(uid: Int, reason: Int) {
-                        runOnUiThread { endCall() }
+                        Log.d("CallActivity", "Remote user offline: $uid")
+                        remoteUserJoined = false
+                        runOnUiThread {
+                            remoteSurfaceView?.let {
+                                val parent = it.parent as? ViewGroup
+                                parent?.removeView(it)
+                            }
+                            remoteSurfaceView = null
+                        }
                     }
 
                     override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
-                        Log.d("CallActivity", "Joined channel: $channel successfully")
+                        Log.d("CallActivity", "Joined channel: $channel with uid: $uid")
+                    }
+
+                    override fun onError(err: Int) {
+                        Log.e("CallActivity", "Agora error code: $err")
                     }
                 }
             }
             rtcEngine = RtcEngine.create(config)
+            Log.d("CallActivity", "RtcEngine created successfully")
         } catch (e: Exception) {
             Log.e("CallActivity", "RtcEngine init error: ${e.message}")
             Toast.makeText(this, "Unable to init Agora", Toast.LENGTH_SHORT).show()
             return
         }
 
+        // ✅ Enable audio first
         rtcEngine?.enableAudio()
         rtcEngine?.setDefaultAudioRoutetoSpeakerphone(true)
+        rtcEngine?.adjustRecordingSignalVolume(100)
+        rtcEngine?.adjustPlaybackSignalVolume(100)
+        Log.d("CallActivity", "Audio enabled")
 
+        // ✅ Enable video if needed
         if (isVideo) {
             rtcEngine?.enableVideo()
             setupLocalVideoView()
+            Log.d("CallActivity", "Video enabled")
         } else {
             rtcEngine?.disableVideo()
             removeLocalVideoViewIfAny()
@@ -147,6 +168,8 @@ class CallActivity : AppCompatActivity() {
             clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
             autoSubscribeAudio = true
             autoSubscribeVideo = isVideo
+            publishMicrophoneTrack = true
+            publishCameraTrack = isVideo
         }
 
         rtcEngine?.joinChannel(null, channelName, 0, options)
@@ -171,16 +194,16 @@ class CallActivity : AppCompatActivity() {
         callRef?.child("type")?.addValueEventListener(callTypeListener!!)
     }
 
-    // ✅ UPDATED: Ensure correct z-ordering for local and remote views
     private fun setupLocalVideoView() {
         if (localSurfaceView != null) return
         localSurfaceView = SurfaceView(baseContext)
-        localSurfaceView?.setZOrderMediaOverlay(true) // local view above remote
+        localSurfaceView?.setZOrderMediaOverlay(true)
         findViewById<FrameLayout>(R.id.local_video_view_container).apply {
             removeAllViews()
             addView(localSurfaceView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
         rtcEngine?.setupLocalVideo(VideoCanvas(localSurfaceView, VideoCanvas.RENDER_MODE_FIT, 0))
+        Log.d("CallActivity", "Local video view setup")
     }
 
     private fun removeLocalVideoViewIfAny() {
@@ -191,16 +214,16 @@ class CallActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ UPDATED: Remote video stays behind all UI
     private fun setupRemoteVideo(uid: Int) {
         if (remoteSurfaceView != null) return
         remoteSurfaceView = SurfaceView(baseContext)
-        remoteSurfaceView?.setZOrderMediaOverlay(false) // behind everything
+        remoteSurfaceView?.setZOrderMediaOverlay(false)
         findViewById<FrameLayout>(R.id.remote_video_view_container).apply {
             removeAllViews()
             addView(remoteSurfaceView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
         rtcEngine?.setupRemoteVideo(VideoCanvas(remoteSurfaceView, VideoCanvas.RENDER_MODE_FIT, uid))
+        Log.d("CallActivity", "Remote video view setup for uid: $uid")
     }
 
     private fun applyCallModeToUI() {
@@ -256,7 +279,9 @@ class CallActivity : AppCompatActivity() {
         try {
             rtcEngine?.leaveChannel()
             RtcEngine.destroy()
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+            Log.e("CallActivity", "Error destroying engine: ${e.message}")
+        }
 
         callStatusListener?.let { callRef?.removeEventListener(it) }
         callTypeListener?.let { callRef?.child("type")?.removeEventListener(it) }
@@ -270,6 +295,8 @@ class CallActivity : AppCompatActivity() {
         try {
             rtcEngine?.leaveChannel()
             RtcEngine.destroy()
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            Log.e("CallActivity", "Error in onDestroy: ${e.message}")
+        }
     }
 }
