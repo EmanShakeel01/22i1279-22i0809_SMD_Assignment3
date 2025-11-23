@@ -134,8 +134,17 @@ class ChatInboxActivity : AppCompatActivity() {
             onBackPressed()
         }
 
+        // Call button - long press for voice, single tap for video
         findViewById<ImageView>(R.id.btnCall).setOnClickListener {
+            Log.d("ChatInbox", "📹 Video call button pressed")
             startCallToTarget(isVideo = true)
+        }
+        
+        // Long press for voice call
+        findViewById<ImageView>(R.id.btnCall).setOnLongClickListener {
+            Log.d("ChatInbox", "📞 Voice call (long press) initiated")
+            startCallToTarget(isVideo = false)
+            true
         }
 
         sendBtn.setOnClickListener { sendTextMessage() }
@@ -1051,34 +1060,58 @@ class ChatInboxActivity : AppCompatActivity() {
     // ==================== CALLS ====================
 
     private fun startCallToTarget(isVideo: Boolean) {
+        Log.d("ChatInbox", "=== Starting call to target ===" )
+        Log.d("ChatInbox", "Current User ID: $currentUserId")
+        Log.d("ChatInbox", "Target User ID: $targetUserId")
+        Log.d("ChatInbox", "Is Video: $isVideo")
+        
         val channel = threadId + "_" + System.currentTimeMillis().toString().takeLast(5)
-        val callerName = FirebaseAuth.getInstance().currentUser?.displayName ?: "Caller"
+        val callerName = sessionManager.getUsername() ?: "Caller"
+        
+        Log.d("ChatInbox", "Channel Name: $channel")
+        Log.d("ChatInbox", "Caller Name: $callerName")
 
         val callMap = mapOf(
             "callerId" to currentUserId.toString(),
             "callerName" to callerName,
             "calleeId" to targetUserId.toString(),
+            "calleeName" to targetName,
             "status" to "ringing",
             "type" to if (isVideo) "video" else "voice",
-            "started" to false
+            "started" to false,
+            "timestamp" to System.currentTimeMillis()
         )
 
+        Log.d("ChatInbox", "Creating call data in Firebase: $callMap")
+        
         FirebaseDatabase.getInstance(
             "https://i1279-22i0809-assignment2-default-rtdb.firebaseio.com/"
         ).reference.child("calls").child(channel).setValue(callMap)
             .addOnSuccessListener {
+                Log.d("ChatInbox", "✅ Call data created successfully in Firebase")
+                
                 val intent = Intent(this, CallActivity::class.java).apply {
                     putExtra("CHANNEL_NAME", channel)
                     putExtra("IS_CALLER", true)
                     putExtra("IS_VIDEO", isVideo)
-                    putExtra("TARGET_UID", targetUserId.toString())
+                    putExtra("TARGET_USER_ID", targetUserId)
+                    putExtra("TARGET_NAME", targetName)
                 }
+                
+                Log.d("ChatInbox", "Starting CallActivity with channel: $channel")
                 startActivity(intent)
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatInbox", "❌ Failed to create call: ${e.message}", e)
+                Toast.makeText(this, "Failed to initiate call", Toast.LENGTH_SHORT).show()
             }
     }
 
     private fun listenForIncomingCalls() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val currentUserIdString = currentUserId.toString()
+        Log.d("ChatInbox", "=== Starting incoming call listener ===" )
+        Log.d("ChatInbox", "Listening for calls to user ID: $currentUserIdString")
+        
         val callsRef = FirebaseDatabase.getInstance(
             "https://i1279-22i0809-assignment2-default-rtdb.firebaseio.com/"
         ).reference.child("calls")
@@ -1087,24 +1120,44 @@ class ChatInboxActivity : AppCompatActivity() {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val calleeId = snapshot.child("calleeId").getValue(String::class.java)
                 val status = snapshot.child("status").getValue(String::class.java)
-                if (calleeId == userId && status == "ringing") {
+                
+                Log.d("ChatInbox", "📞 Call event detected: calleeId=$calleeId, status=$status")
+                Log.d("ChatInbox", "Current user ID: $currentUserIdString")
+                
+                if (calleeId == currentUserIdString && status == "ringing") {
                     val channelName = snapshot.key ?: return
                     val isVideo = snapshot.child("type").getValue(String::class.java) == "video"
+                    val callerName = snapshot.child("callerName").getValue(String::class.java) ?: "Unknown"
+                    
+                    Log.d("ChatInbox", "✅ Incoming call detected!")
+                    Log.d("ChatInbox", "Channel: $channelName")
+                    Log.d("ChatInbox", "Is Video: $isVideo")
+                    Log.d("ChatInbox", "Caller: $callerName")
 
-                    val intent =
-                        Intent(this@ChatInboxActivity, IncomingCallActivity::class.java).apply {
-                            putExtra("CHANNEL_NAME", channelName)
-                            putExtra("IS_VIDEO", isVideo)
-                        }
+                    val intent = Intent(this@ChatInboxActivity, IncomingCallActivity::class.java).apply {
+                        putExtra("CHANNEL_NAME", channelName)
+                        putExtra("IS_VIDEO", isVideo)
+                        putExtra("CALLER_NAME", callerName)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    }
+                    
                     startActivity(intent)
+                } else {
+                    Log.d("ChatInbox", "📞 Call not for this user or wrong status")
                 }
             }
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                // Handle call status changes if needed
+            }
             override fun onChildRemoved(snapshot: DataSnapshot) {}
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ChatInbox", "❌ Call listener error: ${error.message}")
+            }
         })
+        
+        Log.d("ChatInbox", "✅ Incoming call listener started")
     }
 
     // ==================== LIFECYCLE ====================

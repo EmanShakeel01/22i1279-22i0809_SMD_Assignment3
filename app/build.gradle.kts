@@ -43,6 +43,9 @@ android {
 }
 
 dependencies {
+
+
+
     // ✅ Core AndroidX Libraries
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
@@ -74,6 +77,9 @@ dependencies {
     // ✅ Agora SDK (for real-time communication)
     implementation("io.agora.rtc:full-sdk:4.6.0")
     implementation("com.squareup.picasso:picasso:2.8")
+
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.3")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.3")
 
     // ✅ Testing
     testImplementation(libs.junit)

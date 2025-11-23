@@ -46,10 +46,17 @@ class CallActivity : AppCompatActivity() {
     ) { permissions ->
         val grantedAudio = permissions[Manifest.permission.RECORD_AUDIO] == true
         val grantedCam = permissions[Manifest.permission.CAMERA] == true || !isVideo
+        
+        Log.d("CallActivity", "🔒 Permission results:")
+        Log.d("CallActivity", "   Audio: $grantedAudio")
+        Log.d("CallActivity", "   Camera: $grantedCam (required: $isVideo)")
+        
         if (grantedAudio && grantedCam) {
+            Log.d("CallActivity", "✅ All required permissions granted")
             listenForCallSignalling()
         } else {
-            Toast.makeText(this, "Permissions required", Toast.LENGTH_SHORT).show()
+            Log.e("CallActivity", "❌ Required permissions not granted")
+            Toast.makeText(this, "Microphone permission required for calls", Toast.LENGTH_SHORT).show()
             finish()
         }
     }
@@ -62,17 +69,34 @@ class CallActivity : AppCompatActivity() {
         isCaller = intent.getBooleanExtra("IS_CALLER", false)
         isVideo = intent.getBooleanExtra("IS_VIDEO", true)
 
+        Log.d("CallActivity", "=== CallActivity onCreate ===")
+        Log.d("CallActivity", "Channel Name: $channelName")
+        Log.d("CallActivity", "Is Caller: $isCaller")
+        Log.d("CallActivity", "Is Video: $isVideo")
+        Log.d("CallActivity", "Agora App ID: ${agoraAppId.take(10)}...")
+
         callDurationText = findViewById(R.id.callDuration)
         endCallButton = findViewById(R.id.endCallButton)
         muteButton = findViewById(R.id.muteButton)
         switchModeButton = findViewById(R.id.switchCameraButton)
 
-        endCallButton.setOnClickListener { endCallManually() }
-        muteButton.setOnClickListener { toggleMute() }
-        switchModeButton.setOnClickListener { toggleCallMode() }
+        endCallButton.setOnClickListener { 
+            Log.d("CallActivity", "📞 End call button pressed")
+            endCallManually() 
+        }
+        muteButton.setOnClickListener { 
+            Log.d("CallActivity", "🎤 Mute button pressed")
+            toggleMute() 
+        }
+        switchModeButton.setOnClickListener { 
+            Log.d("CallActivity", "📹 Switch mode button pressed")
+            toggleCallMode() 
+        }
 
         val perms = mutableListOf(Manifest.permission.RECORD_AUDIO)
         if (isVideo) perms.add(Manifest.permission.CAMERA)
+        
+        Log.d("CallActivity", "🔒 Requesting permissions: $perms")
         permissionLauncher.launch(perms.toTypedArray())
     }
 
@@ -81,41 +105,68 @@ class CallActivity : AppCompatActivity() {
     private var callTypeListener: ValueEventListener? = null
 
     private fun listenForCallSignalling() {
+        Log.d("CallActivity", "🔄 Setting up Firebase call signaling...")
+        
         callRef = rtdb.child(channelName)
+        
         callStatusListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val status = snapshot.child("status").getValue(String::class.java)
                 val type = snapshot.child("type").getValue(String::class.java) ?: "video"
 
+                Log.d("CallActivity", "📞 Call status changed: $status, type: $type")
+
                 isVideo = (type == "video")
 
-                if (status == "accepted" && !joined) {
-                    initializeAndJoinChannel()
-                } else if (status == "declined" || status == "ended") {
-                    endCall()
+                when (status) {
+                    "accepted" -> {
+                        if (!joined) {
+                            Log.d("CallActivity", "✅ Call accepted, initializing Agora...")
+                            initializeAndJoinChannel()
+                        }
+                    }
+                    "declined" -> {
+                        Log.d("CallActivity", "❌ Call declined")
+                        endCall()
+                    }
+                    "ended" -> {
+                        Log.d("CallActivity", "📞 Call ended")
+                        endCall()
+                    }
+                    else -> {
+                        Log.d("CallActivity", "📞 Call status: $status")
+                    }
                 }
             }
 
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("CallActivity", "❌ Firebase error: ${error.message}")
+            }
         }
 
         callRef?.addValueEventListener(callStatusListener!!)
+        Log.d("CallActivity", "✅ Firebase call signaling set up")
     }
 
     private fun initializeAndJoinChannel() {
+        Log.d("CallActivity", "🚀 Initializing Agora RTC Engine...")
+        
         try {
             val config = RtcEngineConfig().apply {
                 mContext = applicationContext
                 mAppId = agoraAppId
                 mEventHandler = object : IRtcEngineEventHandler() {
                     override fun onUserJoined(uid: Int, elapsed: Int) {
-                        Log.d("CallActivity", "Remote user joined: $uid")
+                        Log.d("CallActivity", "👤 Remote user joined: $uid (elapsed: ${elapsed}ms)")
                         remoteUserJoined = true
-                        runOnUiThread { setupRemoteVideo(uid) }
+                        runOnUiThread { 
+                            Log.d("CallActivity", "🖥️ Setting up remote video for user: $uid")
+                            setupRemoteVideo(uid) 
+                        }
                     }
 
                     override fun onUserOffline(uid: Int, reason: Int) {
-                        Log.d("CallActivity", "Remote user offline: $uid")
+                        Log.d("CallActivity", "👤 Remote user offline: $uid, reason: $reason")
                         remoteUserJoined = false
                         runOnUiThread {
                             remoteSurfaceView?.let {
@@ -123,39 +174,60 @@ class CallActivity : AppCompatActivity() {
                                 parent?.removeView(it)
                             }
                             remoteSurfaceView = null
+                            Log.d("CallActivity", "🖥️ Removed remote video view")
                         }
                     }
 
                     override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
-                        Log.d("CallActivity", "Joined channel: $channel with uid: $uid")
+                        Log.d("CallActivity", "✅ Successfully joined channel: $channel with UID: $uid (elapsed: ${elapsed}ms)")
                     }
 
                     override fun onError(err: Int) {
-                        Log.e("CallActivity", "Agora error code: $err")
+                        Log.e("CallActivity", "❌ Agora error code: $err")
+                        when (err) {
+                            101 -> Log.e("CallActivity", "❌ Invalid App ID")
+                            102 -> Log.e("CallActivity", "❌ Invalid channel name")
+                            103 -> Log.e("CallActivity", "❌ Invalid token")
+                            else -> Log.e("CallActivity", "❌ Unknown Agora error: $err")
+                        }
+                        
+                        runOnUiThread {
+                            Toast.makeText(this@CallActivity, "Call failed: Error $err", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onConnectionStateChanged(state: Int, reason: Int) {
+                        Log.d("CallActivity", "🌐 Connection state changed: state=$state, reason=$reason")
                     }
                 }
             }
+            
             rtcEngine = RtcEngine.create(config)
-            Log.d("CallActivity", "RtcEngine created successfully")
+            Log.d("CallActivity", "✅ RtcEngine created successfully")
+            
         } catch (e: Exception) {
-            Log.e("CallActivity", "RtcEngine init error: ${e.message}")
-            Toast.makeText(this, "Unable to init Agora", Toast.LENGTH_SHORT).show()
+            Log.e("CallActivity", "❌ RtcEngine init error: ${e.message}", e)
+            Toast.makeText(this, "Failed to initialize call engine", Toast.LENGTH_SHORT).show()
+            endCall()
             return
         }
 
         // ✅ Enable audio first
+        Log.d("CallActivity", "🎤 Enabling audio...")
         rtcEngine?.enableAudio()
         rtcEngine?.setDefaultAudioRoutetoSpeakerphone(true)
         rtcEngine?.adjustRecordingSignalVolume(100)
         rtcEngine?.adjustPlaybackSignalVolume(100)
-        Log.d("CallActivity", "Audio enabled")
+        Log.d("CallActivity", "✅ Audio enabled")
 
         // ✅ Enable video if needed
         if (isVideo) {
+            Log.d("CallActivity", "📹 Enabling video...")
             rtcEngine?.enableVideo()
             setupLocalVideoView()
-            Log.d("CallActivity", "Video enabled")
+            Log.d("CallActivity", "✅ Video enabled")
         } else {
+            Log.d("CallActivity", "🔇 Disabling video for voice call")
             rtcEngine?.disableVideo()
             removeLocalVideoViewIfAny()
         }
@@ -172,26 +244,43 @@ class CallActivity : AppCompatActivity() {
             publishCameraTrack = isVideo
         }
 
+        Log.d("CallActivity", "🔗 Joining channel: $channelName")
         rtcEngine?.joinChannel(null, channelName, 0, options)
         joined = true
+        
+        Log.d("CallActivity", "⏱️ Starting call timer")
         startCallTimer()
 
+        // Update Firebase
         callRef?.child("started")?.setValue(true)
-        if (isCaller) callRef?.child("startTime")?.setValue(ServerValue.TIMESTAMP)
+        if (isCaller) {
+            callRef?.child("startTime")?.setValue(ServerValue.TIMESTAMP)
+        }
 
+        // Listen for call type changes
         callTypeListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val type = snapshot.getValue(String::class.java) ?: return
                 val newIsVideo = (type == "video")
+                
+                Log.d("CallActivity", "📞 Call type changed to: $type")
+                
                 if (newIsVideo != isVideo) {
                     isVideo = newIsVideo
-                    runOnUiThread { applyCallModeToUI() }
+                    runOnUiThread { 
+                        Log.d("CallActivity", "🔄 Applying call mode change to UI")
+                        applyCallModeToUI() 
+                    }
                 }
             }
 
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("CallActivity", "❌ Call type listener error: ${error.message}")
+            }
         }
         callRef?.child("type")?.addValueEventListener(callTypeListener!!)
+        
+        Log.d("CallActivity", "✅ Agora initialization complete")
     }
 
     private fun setupLocalVideoView() {
