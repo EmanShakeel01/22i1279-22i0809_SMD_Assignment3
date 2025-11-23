@@ -1118,13 +1118,28 @@ class ChatInboxActivity : AppCompatActivity() {
 
         callsRef.addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val calleeId = snapshot.child("calleeId").getValue(String::class.java)
+                // Try to get calleeId as both string and integer to handle Firebase data type inconsistencies
+                val calleeIdString = snapshot.child("calleeId").getValue(String::class.java)
+                val calleeIdInt = snapshot.child("calleeId").getValue(Int::class.java)
                 val status = snapshot.child("status").getValue(String::class.java)
                 
-                Log.d("ChatInbox", "📞 Call event detected: calleeId=$calleeId, status=$status")
-                Log.d("ChatInbox", "Current user ID: $currentUserIdString")
+                Log.d("ChatInbox", "📞 Call event detected: calleeIdString=$calleeIdString, calleeIdInt=$calleeIdInt, status=$status")
+                Log.d("ChatInbox", "Current user ID: $currentUserIdString (as int: $currentUserId)")
                 
-                if (calleeId == currentUserIdString && status == "ringing") {
+                val isForCurrentUser = (calleeIdString == currentUserIdString) || (calleeIdInt == currentUserId)
+                
+                if (isForCurrentUser && status == "ringing") {
+                    // Check if call is recent (within last 2 minutes) to avoid processing old calls
+                    val timestamp = snapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                    val currentTime = System.currentTimeMillis()
+                    val timeDifference = currentTime - timestamp
+                    val twoMinutesInMs = 2 * 60 * 1000L // 2 minutes
+                    
+                    if (timeDifference > twoMinutesInMs) {
+                        Log.d("ChatInbox", "📞 Ignoring old call (${timeDifference / 1000}s ago)")
+                        return
+                    }
+                    
                     val channelName = snapshot.key ?: return
                     val isVideo = snapshot.child("type").getValue(String::class.java) == "video"
                     val callerName = snapshot.child("callerName").getValue(String::class.java) ?: "Unknown"
