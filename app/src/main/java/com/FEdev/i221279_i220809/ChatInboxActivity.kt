@@ -20,6 +20,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.FEdev.i221279_i220809.database.MessageDatabaseHelper
+import com.FEdev.i221279_i220809.database.EnhancedMessageDatabase
+import com.FEdev.i221279_i220809.database.OfflineQueueDatabase
+import com.FEdev.i221279_i220809.sync.BackgroundSyncManager
+import com.FEdev.i221279_i220809.utils.NetworkUtils
 import com.FEdev.i221279_i220809.models.*
 import com.FEdev.i221279_i220809.network.RetrofitClient
 import com.FEdev.i221279_i220809.utils.SessionManager
@@ -28,6 +32,7 @@ import com.google.firebase.database.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import org.json.JSONObject
 
 class ChatInboxActivity : AppCompatActivity() {
 
@@ -43,6 +48,8 @@ class ChatInboxActivity : AppCompatActivity() {
 
     private val sessionManager by lazy { SessionManager(this) }
     private val messageDB by lazy { MessageDatabaseHelper(this) }
+    private val enhancedMessageDB by lazy { EnhancedMessageDatabase(this) }
+    private val syncManager by lazy { BackgroundSyncManager.getInstance(this) }
 
     private val messages = mutableListOf<MessageItem>()
     private lateinit var adapter: NewChatAdapter

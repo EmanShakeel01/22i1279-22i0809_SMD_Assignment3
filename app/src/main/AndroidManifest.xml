@@ -33,6 +33,9 @@
             android:name=".ScreenshotNotificationsActivity"
             android:exported="false" />
         <activity
+            android:name=".OfflineStatusActivity"
+            android:exported="false" />
+        <activity
             android:name=".ImageCacheDatabase"
             android:exported="false" />
         <activity
