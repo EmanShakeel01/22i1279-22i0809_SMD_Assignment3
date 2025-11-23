@@ -1133,9 +1133,10 @@ class ChatInboxActivity : AppCompatActivity() {
                 Log.d("ChatInbox", "📞 Call event detected: calleeIdString=$calleeIdString, calleeIdInt=$calleeIdInt, status=$status")
                 Log.d("ChatInbox", "Current user ID: $currentUserIdString (as int: $currentUserId)")
                 
-                val isForCurrentUser = (calleeIdString == currentUserIdString) || (calleeIdInt == currentUserId)
+                val isIncomingCall = (calleeIdString == currentUserIdString) || (calleeIdInt == currentUserId)
                 
-                if (isForCurrentUser && status == "ringing") {
+                if (isIncomingCall && status == "ringing") {
+                    Log.d("ChatInbox", "✅ INCOMING CALL FOR THIS USER!")
                     // Check if call is recent (within last 2 minutes) to avoid processing old calls
                     val timestamp = snapshot.child("timestamp").getValue(Long::class.java) ?: 0L
                     val currentTime = System.currentTimeMillis()
@@ -1165,7 +1166,11 @@ class ChatInboxActivity : AppCompatActivity() {
                     
                     startActivity(intent)
                 } else {
-                    Log.d("ChatInbox", "📞 Call not for this user or wrong status")
+                    if (!isIncomingCall) {
+                        Log.d("ChatInbox", "📞 Call is for user $calleeIdString, not for current user $currentUserIdString")
+                    } else {
+                        Log.d("ChatInbox", "📞 Call status is '$status', not 'ringing'")
+                    }
                 }
             }
 
