@@ -41,7 +41,9 @@ class SearchResultsAdapter(
         // Set online/offline status
         val isOnline = userStatusMap[user.user_id] ?: false
         holder.statusIndicator.setBackgroundResource(
-            if (isOnline) R.drawable.status_dot_online else R.drawable.status_dot_offline
+            if (isOnline) R.drawable.status_dot_online else R.drawable.status_dot_online
+
+          //  if (isOnline) R.drawable.status_dot_offline else R.drawable.status_dot_offline
         )
 
         // Make status indicator visible
