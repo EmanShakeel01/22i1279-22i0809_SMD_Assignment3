@@ -1118,9 +1118,16 @@ class ChatInboxActivity : AppCompatActivity() {
 
         callsRef.addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                // Try to get calleeId as both string and integer to handle Firebase data type inconsistencies
+                Log.d("ChatInbox", "📞 Raw Firebase snapshot: ${snapshot.value}")
+                Log.d("ChatInbox", "📞 Available keys: ${snapshot.children.map { it.key }}")
+                
+                // Safely get calleeId as string first, then try to convert to int
                 val calleeIdString = snapshot.child("calleeId").getValue(String::class.java)
-                val calleeIdInt = snapshot.child("calleeId").getValue(Int::class.java)
+                val calleeIdInt = try {
+                    calleeIdString?.toIntOrNull()
+                } catch (e: Exception) {
+                    null
+                }
                 val status = snapshot.child("status").getValue(String::class.java)
                 
                 Log.d("ChatInbox", "📞 Call event detected: calleeIdString=$calleeIdString, calleeIdInt=$calleeIdInt, status=$status")
