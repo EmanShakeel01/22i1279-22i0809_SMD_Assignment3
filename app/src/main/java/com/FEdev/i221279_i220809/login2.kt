@@ -76,7 +76,7 @@ class login2 : AppCompatActivity() {
                     )
 
                     // ✅ Save FCM token for this user
-                    FCMTokenManager.saveTokenForDatabaseUserId(userData.user_id)
+
 
                     Toast.makeText(this@login2, body.message, Toast.LENGTH_SHORT).show()
 

@@ -14,6 +14,6 @@ class MyApp : Application() {
         BackgroundSyncManager.getInstance(this).initialize()
         
         // ✅ Initialize FCM
-        FCMTokenManager.initializeFCM()
+
     }
 }
