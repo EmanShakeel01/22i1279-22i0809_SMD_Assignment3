@@ -305,6 +305,49 @@ exports.sendFollowAcceptNotification = functions.database
         return null;
     });
 
+// Send FCM notification for screenshot detection
+exports.sendScreenshotNotification = functions.database
+    .ref('/screenshots/{userId}/{screenshotId}')
+    .onCreate(async (snapshot, context) => {
+        const screenshotData = snapshot.val();
+        const userId = context.params.userId;
+
+        // Get user's FCM token
+        const userSnapshot = await admin.database()
+            .ref(`users/${userId}`)
+            .once('value');
+
+        const fcmToken = userSnapshot.val()?.fcmToken;
+
+        if (!fcmToken) {
+            console.log('No FCM token found for user:', userId);
+            return null;
+        }
+
+        const payload = {
+            notification: {
+                title: 'Screenshot Alert',
+                body: `⚠️ ${screenshotData.takerName} took a screenshot`,
+                sound: 'default'
+            },
+            data: {
+                type: 'screenshot',
+                takerId: screenshotData.takerId,
+                takerName: screenshotData.takerName,
+                timestamp: screenshotData.timestamp.toString()
+            }
+        };
+
+        try {
+            await admin.messaging().sendToDevice(fcmToken, payload);
+            console.log('Screenshot notification sent to:', userId);
+        } catch (error) {
+            console.error('Error sending notification:', error);
+        }
+
+        return null;
+    });
+
 // Create and deploy your first functions
 // https://firebase.google.com/docs/functions/get-started
 

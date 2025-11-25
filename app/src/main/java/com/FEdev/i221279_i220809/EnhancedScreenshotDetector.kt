@@ -162,6 +162,17 @@ class ScreenshotDetector(
         Log.d(TAG, "📝 System message: $systemMessage")
         Log.d(TAG, "⏰ Timestamp: $timestamp")
         Log.d(TAG, "🔄 Callback available: ${onSystemMessageInserted != null}")
+
+        // ✅ Send FCM notification to the other user about screenshot
+        val currentUserId = sessionManager.getUserId()
+        if (currentUserId != null && currentUsername != null) {
+            Notificationhelperfcm.sendScreenshotNotification(
+                screenshotTakerId = currentUserId.toString(),
+                screenshotTakerName = currentUsername,
+                otherUserId = targetUserId.toString()
+            )
+            Log.d(TAG, "📱 FCM notification sent for screenshot detection")
+        }
         
         // Notify the chat activity to add this system message
         handler.post {

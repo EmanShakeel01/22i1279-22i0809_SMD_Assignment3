@@ -12,5 +12,8 @@ class MyApp : Application() {
         
         // ✅ Initialize offline support system
         BackgroundSyncManager.getInstance(this).initialize()
+        
+        // ✅ Initialize FCM
+        FCMTokenManager.initializeFCM()
     }
 }

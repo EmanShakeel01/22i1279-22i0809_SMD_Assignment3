@@ -485,6 +485,15 @@ class ChatInboxActivity : AppCompatActivity() {
                             // Mark as synced in local DB
                             messageDB.markMessageAsSynced(localId.toInt(), data.message_id)
 
+                            // ✅ Send FCM notification to recipient
+                            val senderName = sessionManager.getUsername() ?: "User"
+                            Notificationhelperfcm.sendMessageNotification(
+                                senderId = currentUserId.toString(),
+                                senderName = senderName,
+                                receiverId = targetUserId.toString(),
+                                messageText = text
+                            )
+
                             // Update the message in the UI with the server ID
                             val messageIndex = messages.indexOfFirst {
                                 it.sender_id == currentUserId && it.timestamp == timestamp
@@ -562,6 +571,20 @@ class ChatInboxActivity : AppCompatActivity() {
 
                     if (data != null) {
                         Log.d("ChatInbox", "✅ $type sent successfully")
+
+                        // ✅ Send FCM notification to recipient
+                        val senderName = sessionManager.getUsername() ?: "User"
+                        val messageText = when(type) {
+                            "image" -> "Sent an image"
+                            "video" -> "Sent a video"
+                            else -> "Sent a file"
+                        }
+                        Notificationhelperfcm.sendMessageNotification(
+                            senderId = currentUserId.toString(),
+                            senderName = senderName,
+                            receiverId = targetUserId.toString(),
+                            messageText = messageText
+                        )
 
                         // Cache message
                         cacheMessage(

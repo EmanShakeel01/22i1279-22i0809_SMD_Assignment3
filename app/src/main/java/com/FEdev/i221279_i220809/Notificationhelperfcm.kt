@@ -34,6 +34,7 @@ object Notificationhelperfcm {
 
     /**
      * Send notification when new message is received
+     * Store message data in Firebase so Cloud Function can trigger
      */
     fun sendMessageNotification(
         senderId: String,
@@ -41,71 +42,67 @@ object Notificationhelperfcm {
         receiverId: String,
         messageText: String?
     ) {
-        getUserFCMToken(receiverId) { token ->
-            if (token != null) {
-                val notificationData = mapOf(
-                    "type" to "message",
-                    "title" to senderName,
-                    "body" to (messageText ?: "Sent an image"),
-                    "senderId" to senderId,
-                    "senderName" to senderName,
-                    "timestamp" to System.currentTimeMillis().toString()
-                )
-
-                sendNotificationToToken(token, notificationData)
-            }
+        // Create chat ID (consistent format for both users)
+        val chatId = if (senderId < receiverId) {
+            "${senderId}_${receiverId}"
+        } else {
+            "${receiverId}_${senderId}"
         }
+
+        // Store message in Firebase for Cloud Function to trigger
+        val messagesRef = database.getReference("chats").child(chatId).child("messages")
+        val messageId = messagesRef.push().key ?: return
+
+        val messageData = hashMapOf(
+            "senderId" to senderId,
+            "senderName" to senderName,
+            "receiverId" to receiverId,
+            "messageText" to (messageText ?: ""),
+            "messageType" to if (messageText != null) "text" else "media",
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        messagesRef.child(messageId).setValue(messageData)
+            .addOnSuccessListener {
+                Log.d(TAG, "Message stored in Firebase, Cloud Function will send notification")
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to store message in Firebase: ${e.message}")
+            }
     }
 
     /**
      * Send notification for follow request
+     * The follow request is already stored in Firebase by FollowRequestManager
+     * Cloud Function will automatically trigger when data is written
      */
     fun sendFollowRequestNotification(
         fromUserId: String,
         fromUsername: String,
         toUserId: String
     ) {
-        getUserFCMToken(toUserId) { token ->
-            if (token != null) {
-                val notificationData = mapOf(
-                    "type" to "follow_request",
-                    "title" to "New Follow Request",
-                    "body" to "$fromUsername wants to follow you",
-                    "fromUserId" to fromUserId,
-                    "fromUsername" to fromUsername,
-                    "timestamp" to System.currentTimeMillis().toString()
-                )
-
-                sendNotificationToToken(token, notificationData)
-            }
-        }
+        // FollowRequestManager already stores the request in Firebase
+        // Cloud Function will automatically send notification
+        Log.d(TAG, "Follow request stored by FollowRequestManager, Cloud Function will handle notification")
     }
 
     /**
      * Send notification when follow request is accepted
+     * Cloud Function will automatically trigger when following relationship is created
      */
     fun sendFollowAcceptedNotification(
         accepterId: String,
         accepterName: String,
         requesterId: String
     ) {
-        getUserFCMToken(requesterId) { token ->
-            if (token != null) {
-                val notificationData = mapOf(
-                    "type" to "follow_accepted",
-                    "title" to "Follow Request Accepted",
-                    "body" to "$accepterName accepted your follow request",
-                    "userId" to accepterId,
-                    "timestamp" to System.currentTimeMillis().toString()
-                )
-
-                sendNotificationToToken(token, notificationData)
-            }
-        }
+        // FollowRequestManager already creates following/followers relationships
+        // Cloud Function will automatically send notification
+        Log.d(TAG, "Follow acceptance handled by FollowRequestManager, Cloud Function will handle notification")
     }
 
     /**
      * Send notification for new comment
+     * Store comment data in Firebase so Cloud Function can trigger
      */
     fun sendCommentNotification(
         commenterId: String,
@@ -117,25 +114,29 @@ object Notificationhelperfcm {
         // Don't send notification if commenting on own post
         if (commenterId == postOwnerId) return
 
-        getUserFCMToken(postOwnerId) { token ->
-            if (token != null) {
-                val notificationData = mapOf(
-                    "type" to "comment",
-                    "title" to "New Comment",
-                    "body" to "$commenterName commented: $commentText",
-                    "commenterId" to commenterId,
-                    "commenterName" to commenterName,
-                    "postId" to postId,
-                    "timestamp" to System.currentTimeMillis().toString()
-                )
+        // Store comment in Firebase for Cloud Function to trigger
+        val commentsRef = database.getReference("posts").child(postId).child("comments")
+        val commentId = commentsRef.push().key ?: return
 
-                sendNotificationToToken(token, notificationData)
+        val commentData = hashMapOf(
+            "userId" to commenterId,
+            "username" to commenterName,
+            "text" to commentText,
+            "timestamp" to System.currentTimeMillis().toString()
+        )
+
+        commentsRef.child(commentId).setValue(commentData)
+            .addOnSuccessListener {
+                Log.d(TAG, "Comment stored in Firebase, Cloud Function will send notification")
             }
-        }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to store comment in Firebase: ${e.message}")
+            }
     }
 
     /**
      * Send notification for post like
+     * Store like data in Firebase so Cloud Function can trigger
      */
     fun sendLikeNotification(
         likerId: String,
@@ -146,21 +147,16 @@ object Notificationhelperfcm {
         // Don't send notification if liking own post
         if (likerId == postOwnerId) return
 
-        getUserFCMToken(postOwnerId) { token ->
-            if (token != null) {
-                val notificationData = mapOf(
-                    "type" to "like",
-                    "title" to "New Like",
-                    "body" to "$likerName liked your post",
-                    "likerId" to likerId,
-                    "likerName" to likerName,
-                    "postId" to postId,
-                    "timestamp" to System.currentTimeMillis().toString()
-                )
+        // Store like in Firebase for Cloud Function to trigger
+        val likesRef = database.getReference("posts").child(postId).child("likes")
 
-                sendNotificationToToken(token, notificationData)
+        likesRef.child(likerId).setValue(true)
+            .addOnSuccessListener {
+                Log.d(TAG, "Like stored in Firebase, Cloud Function will send notification")
             }
-        }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to store like in Firebase: ${e.message}")
+            }
     }
 
     /**
@@ -171,20 +167,23 @@ object Notificationhelperfcm {
         screenshotTakerName: String,
         otherUserId: String
     ) {
-        getUserFCMToken(otherUserId) { token ->
-            if (token != null) {
-                val notificationData = mapOf(
-                    "type" to "screenshot",
-                    "title" to "Screenshot Alert",
-                    "body" to "⚠️ $screenshotTakerName took a screenshot",
-                    "userId" to screenshotTakerId,
-                    "userName" to screenshotTakerName,
-                    "timestamp" to System.currentTimeMillis().toString()
-                )
+        // Store screenshot data in Firebase, Cloud Function will handle notification
+        val screenshotsRef = database.getReference("screenshots")
+        val screenshotId = screenshotsRef.push().key ?: return
 
-                sendNotificationToToken(token, notificationData)
+        val screenshotData = hashMapOf(
+            "takerId" to screenshotTakerId,
+            "takerName" to screenshotTakerName,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        screenshotsRef.child(otherUserId).child(screenshotId).setValue(screenshotData)
+            .addOnSuccessListener {
+                Log.d(TAG, "Screenshot data saved, Cloud Function will send notification")
             }
-        }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to save screenshot data: ${e.message}")
+            }
     }
 
     /**

@@ -75,6 +75,9 @@ class login2 : AppCompatActivity() {
                         userData.username
                     )
 
+                    // ✅ Save FCM token for this user
+                    FCMTokenManager.saveTokenForDatabaseUserId(userData.user_id)
+
                     Toast.makeText(this@login2, body.message, Toast.LENGTH_SHORT).show()
 
                     startActivity(Intent(this@login2, homepage::class.java))
